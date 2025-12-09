@@ -1,120 +1,131 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-function RegisterPage() {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
+const RegisterPage = () => {
   const navigate = useNavigate();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleRegister = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    // TODO: Implement register logic
-    console.log('Register:', formData);
-    // Sau khi đăng ký thành công, chuyển đến trang login
+    if (password !== confirmPassword) {
+      alert('Mật khẩu không khớp!');
+      return;
+    }
+    // Giả lập đăng ký thành công
     navigate('/login');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background-color)' }}>
+      <div className="w-full max-w-md p-8 rounded-2xl" style={{ backgroundColor: 'var(--surface-color)' }}>
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-600 mb-2">Studio478</h1>
-          <p className="text-gray-600">Tạo tài khoản mới</p>
+          <div className="text-5xl mb-4">💬</div>
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Đăng ký</h2>
         </div>
 
-        <form onSubmit={handleRegister} className="space-y-4">
-          <div>
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
-              Họ và tên
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block mb-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              Họ tên
             </label>
             <input
               type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Nhập họ và tên"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg outline-none"
+              style={{
+                backgroundColor: 'var(--hover-color)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)'
+              }}
               required
             />
           </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="mb-4">
+            <label className="block mb-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
               Email
             </label>
             <input
               type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Nhập email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg outline-none"
+              style={{
+                backgroundColor: 'var(--hover-color)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)'
+              }}
               required
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="mb-4">
+            <label className="block mb-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
               Mật khẩu
             </label>
             <input
               type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Nhập mật khẩu"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg outline-none"
+              style={{
+                backgroundColor: 'var(--hover-color)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)'
+              }}
               required
             />
           </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="mb-6">
+            <label className="block mb-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
               Xác nhận mật khẩu
             </label>
             <input
               type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Nhập lại mật khẩu"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg outline-none"
+              style={{
+                backgroundColor: 'var(--hover-color)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)'
+              }}
               required
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full py-3 rounded-lg font-medium transition-colors mb-4"
+            style={{
+              backgroundColor: 'var(--primary-color)',
+              color: '#ffffff'
+            }}
           >
             Đăng ký
           </button>
-        </form>
 
-        <div className="mt-6 text-center">
-          <span className="text-sm text-gray-600">Đã có tài khoản? </span>
-          <Link to="/login" className="text-sm text-blue-600 hover:underline font-medium">
-            Đăng nhập
-          </Link>
-        </div>
+          <p className="text-center" style={{ color: 'var(--text-secondary)' }}>
+            Đã có tài khoản?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/login')}
+              className="font-medium"
+              style={{ color: 'var(--primary-color)' }}
+            >
+              Đăng nhập
+            </button>
+          </p>
+        </form>
       </div>
     </div>
   );
-}
+};
 
 export default RegisterPage;
+

@@ -1,81 +1,90 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-function LoginPage() {
+const LoginPage = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log('Login:', { email, password });
-    // Sau khi đăng nhập thành công, chuyển đến trang chat
+    // Giả lập đăng nhập thành công
+    localStorage.setItem('token', 'dummy-token');
     navigate('/chat');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background-color)' }}>
+      <div className="w-full max-w-md p-8 rounded-2xl" style={{ backgroundColor: 'var(--surface-color)' }}>
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-600 mb-2">Studio478</h1>
-          <p className="text-gray-600">Đăng nhập để tiếp tục</p>
+          <div className="text-5xl mb-4">💬</div>
+          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Đăng nhập</h2>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block mb-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
               Email
             </label>
             <input
               type="email"
-              id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Nhập email của bạn"
+              className="w-full px-4 py-3 rounded-lg outline-none"
+              style={{
+                backgroundColor: 'var(--hover-color)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)'
+              }}
               required
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="mb-6">
+            <label className="block mb-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
               Mật khẩu
             </label>
             <input
               type="password"
-              id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Nhập mật khẩu"
+              className="w-full px-4 py-3 rounded-lg outline-none"
+              style={{
+                backgroundColor: 'var(--hover-color)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)'
+              }}
               required
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full py-3 rounded-lg font-medium transition-colors mb-4"
+            style={{
+              backgroundColor: 'var(--primary-color)',
+              color: '#ffffff'
+            }}
           >
             Đăng nhập
           </button>
+
+          <p className="text-center" style={{ color: 'var(--text-secondary)' }}>
+            Chưa có tài khoản?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/register')}
+              className="font-medium"
+              style={{ color: 'var(--primary-color)' }}
+            >
+              Đăng ký ngay
+            </button>
+          </p>
         </form>
-
-        <div className="mt-6 text-center">
-          <Link to="/about" className="text-sm text-blue-600 hover:underline">
-            Quên mật khẩu?
-          </Link>
-        </div>
-
-        <div className="mt-4 text-center">
-          <span className="text-sm text-gray-600">Chưa có tài khoản? </span>
-          <Link to="/register" className="text-sm text-blue-600 hover:underline font-medium">
-            Đăng ký ngay
-          </Link>
-        </div>
       </div>
     </div>
   );
-}
+};
 
 export default LoginPage;
+

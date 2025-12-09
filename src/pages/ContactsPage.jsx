@@ -1,85 +1,92 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function ContactsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+const ContactsPage = () => {
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const contacts = [
-    { id: 1, name: 'Nguyễn Văn A', email: 'nguyenvana@example.com', status: 'online' },
-    { id: 2, name: 'Trần Thị B', email: 'tranthib@example.com', status: 'offline' },
-    { id: 3, name: 'Lê Văn C', email: 'levanc@example.com', status: 'online' },
-    { id: 4, name: 'Phạm Thị D', email: 'phamthid@example.com', status: 'offline' },
-    { id: 5, name: 'Hoàng Văn E', email: 'hoangvane@example.com', status: 'online' },
+    { id: 1, name: 'Nguyễn Văn A', avatar: '👤', status: 'online' },
+    { id: 2, name: 'Trần Thị B', avatar: '👤', status: 'offline' },
+    { id: 3, name: 'Lê Văn C', avatar: '👤', status: 'online' },
+    { id: 4, name: 'Phạm Thị D', avatar: '👤', status: 'offline' },
   ];
 
   const filteredContacts = contacts.filter(contact =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase())
+    contact.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Danh bạ</h1>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--background-color)' }}>
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => navigate('/chat')}
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: 'var(--primary-color)' }}
+          >
+            ← Quay lại
+          </button>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            Danh bạ
+          </h1>
+          <div className="w-10"></div>
+        </div>
 
-        {/* Search Bar */}
+        {/* Search */}
         <div className="mb-6">
           <input
             type="text"
             placeholder="Tìm kiếm liên hệ..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-3 rounded-lg outline-none"
+            style={{
+              backgroundColor: 'var(--surface-color)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)'
+            }}
           />
         </div>
 
         {/* Contacts List */}
-        <div className="bg-white rounded-lg shadow-sm">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-gray-700">
-              Tất cả liên hệ ({filteredContacts.length})
-            </h2>
-          </div>
-
-          <div className="divide-y divide-gray-200">
-            {filteredContacts.map((contact) => (
-              <div
-                key={contact.id}
-                className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                      {contact.name.charAt(0)}
-                    </div>
-                    {contact.status === 'online' && (
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800">{contact.name}</h3>
-                    <p className="text-sm text-gray-500">{contact.email}</p>
-                  </div>
-                  <button
-                    onClick={() => navigate('/chat')}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Nhắn tin
-                  </button>
+        <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--surface-color)' }}>
+          {filteredContacts.map((contact, index) => (
+            <div
+              key={contact.id}
+              className="flex items-center p-4 cursor-pointer transition-colors"
+              style={{
+                borderBottom: index < filteredContacts.length - 1 ? '1px solid var(--border-color)' : 'none'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <div className="relative mr-4">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+                  style={{ backgroundColor: 'var(--hover-color)' }}>
+                  {contact.avatar}
                 </div>
+                {contact.status === 'online' && (
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2"
+                    style={{ borderColor: 'var(--surface-color)' }}></div>
+                )}
               </div>
-            ))}
-          </div>
+              <div>
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {contact.name}
+                </h3>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {contact.status === 'online' ? 'Đang hoạt động' : 'Không hoạt động'}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
-
-        {filteredContacts.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            Không tìm thấy liên hệ nào
-          </div>
-        )}
       </div>
     </div>
   );
-}
+};
 
 export default ContactsPage;
+
