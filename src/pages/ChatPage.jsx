@@ -1,6 +1,12 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Paperclip, Image as ImageIcon, Smile, Bell, Pin, Search, Lock, ChevronRight, ChevronLeft } from 'lucide-react';
 import { ThemeContext } from '../contexts/ThemeContext';
+import ChatSidebar from '../components/organisms/ChatSidebar/ChatSidebar';
+import Button from '../components/atoms/Button/Button';
+import IconButton from '../components/atoms/Button/IconButton';
+import Input from '../components/atoms/Input/Input';
+import Avatar from '../components/atoms/Avatar/Avatar';
 
 const ChatPage = () => {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
@@ -78,176 +84,39 @@ const ChatPage = () => {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background-color)' }}>
-      {/* Left Sidebar - Danh sách chat */}
-      <div className="w-80 flex flex-col border-r" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
-        {/* Header */}
-        <div className="p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <h1 className="text-xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>Chat</h1>
-          {/* Search */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Tìm kiếm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg outline-none"
-              style={{
-                backgroundColor: 'var(--hover-color)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-color)'
-              }}
-            />
-            <span className="absolute right-3 top-2.5 text-gray-400">🔍</span>
-          </div>
-        </div>
-
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto">
-          {filteredChats.map(chat => (
-            <div
-              key={chat.id}
-              onClick={() => setSelectedChat(chat)}
-              className="flex items-center p-3 cursor-pointer transition-colors"
-              style={{
-                backgroundColor: selectedChat?.id === chat.id ? 'var(--hover-color)' : 'transparent',
-              }}
-              onMouseEnter={(e) => {
-                if (selectedChat?.id !== chat.id) {
-                  e.currentTarget.style.backgroundColor = 'var(--hover-color)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedChat?.id !== chat.id) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <div className="relative mr-3">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-                  style={{ backgroundColor: 'var(--hover-color)' }}>
-                  {chat.avatar}
-                </div>
-                {chat.online && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2"
-                    style={{ borderColor: 'var(--surface-color)' }}></div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-baseline mb-1">
-                  <h3 className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                    {chat.name}
-                  </h3>
-                  <span className="text-xs ml-2 flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>
-                    {chat.time}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>
-                    {chat.lastMessage}
-                  </p>
-                  {chat.unread > 0 && (
-                    <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full flex-shrink-0">
-                      {chat.unread}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom Settings */}
-        <div className="relative border-t p-3" style={{ borderColor: 'var(--border-color)' }}>
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="w-full flex items-center justify-center p-2 rounded-lg hover:opacity-80 transition-opacity"
-            style={{ backgroundColor: 'var(--hover-color)', color: 'var(--text-primary)' }}
-          >
-            <span className="text-xl mr-2">⚙️</span>
-            <span className="font-medium">Cài đặt</span>
-          </button>
-
-          {/* Settings Menu */}
-          {showSettings && (
-            <div
-              className="absolute bottom-full left-3 right-3 mb-2 rounded-lg shadow-xl overflow-hidden"
-              style={{
-                backgroundColor: 'var(--surface-color)',
-                border: '1px solid var(--border-color)',
-                boxShadow: '0 -4px 12px var(--shadow)'
-              }}
-            >
-              <button
-                onClick={() => {
-                  setShowSettings(false);
-                  navigate('/chat');
-                }}
-                className="w-full px-4 py-3 text-left flex items-center transition-colors"
-                style={{ color: 'var(--text-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <span className="mr-3">💬</span> Tin nhắn
-              </button>
-              <button
-                onClick={() => {
-                  setShowSettings(false);
-                  navigate('/contacts');
-                }}
-                className="w-full px-4 py-3 text-left flex items-center transition-colors"
-                style={{ color: 'var(--text-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <span className="mr-3">📖</span> Danh bạ
-              </button>
-              <button
-                onClick={() => {
-                  setShowSettings(false);
-                  navigate('/profile');
-                }}
-                className="w-full px-4 py-3 text-left flex items-center transition-colors"
-                style={{ color: 'var(--text-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <span className="mr-3">👤</span> Cá nhân
-              </button>
-              <button
-                onClick={() => {
-                  setShowSettings(false);
-                  navigate('/about');
-                }}
-                className="w-full px-4 py-3 text-left flex items-center transition-colors"
-                style={{ color: 'var(--text-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <span className="mr-3">ℹ️</span> Giới thiệu
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="w-full px-4 py-3 text-left flex items-center transition-colors"
-                style={{ color: 'var(--text-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <span className="mr-3">{isDarkMode ? '☀️' : '🌙'}</span> {isDarkMode ? 'Sáng' : 'Tối'}
-              </button>
-              <div className="border-t" style={{ borderColor: 'var(--border-color)' }}>
-                <button
-                  onClick={handleLogout}
-                  className="w-full px-4 py-3 text-left flex items-center text-red-500 transition-colors"
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <span className="mr-3">🚪</span> Đăng xuất
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Left Sidebar - Chat List */}
+      <ChatSidebar
+        searchQuery={searchQuery}
+        onSearchChange={(e) => setSearchQuery(e.target.value)}
+        chats={filteredChats}
+        selectedChatId={selectedChat?.id}
+        onChatSelect={setSelectedChat}
+        onSettingsClick={() => setShowSettings(!showSettings)}
+        showSettings={showSettings}
+        // SettingsMenu props
+        onMessageClick={() => {
+          setShowSettings(false);
+          navigate('/chat');
+        }}
+        onContactsClick={() => {
+          setShowSettings(false);
+          navigate('/contacts');
+        }}
+        onProfileClick={() => {
+          setShowSettings(false);
+          navigate('/profile');
+        }}
+        onAboutClick={() => {
+          setShowSettings(false);
+          navigate('/about');
+        }}
+        onThemeToggle={() => {
+          toggleTheme();
+          setShowSettings(false);
+        }}
+        onLogout={handleLogout}
+        isDarkMode={isDarkMode}
+      />
 
       {/* Center - Chat Window */}
       <div className="flex-1 flex flex-col">
@@ -257,9 +126,8 @@ const ChatPage = () => {
             <div className="p-4 border-b flex items-center justify-between"
               style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
               <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl mr-3"
-                  style={{ backgroundColor: 'var(--hover-color)' }}>
-                  {selectedChat.avatar}
+                <div className="mr-3">
+                  <Avatar emoji={selectedChat.avatar} size="medium" online={selectedChat.online} />
                 </div>
                 <div>
                   <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -270,15 +138,12 @@ const ChatPage = () => {
                   </p>
                 </div>
               </div>
-              <button
+              <IconButton
                 onClick={() => setShowRightPanel(!showRightPanel)}
-                className="p-2 rounded-lg transition-colors"
-                style={{ color: 'var(--primary-color)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                title={showRightPanel ? 'Ẩn panel' : 'Hiện panel'}
               >
-                <span className="text-xl">{showRightPanel ? '➡️' : '⬅️'}</span>
-              </button>
+                {showRightPanel ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+              </IconButton>
             </div>
 
             {/* Messages */}
@@ -306,57 +171,25 @@ const ChatPage = () => {
             {/* Message Input */}
             <div className="p-4 border-t" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="p-2 rounded-lg transition-colors"
-                  style={{ color: 'var(--primary-color)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <span className="text-xl">📎</span>
-                </button>
-                <button
-                  type="button"
-                  className="p-2 rounded-lg transition-colors"
-                  style={{ color: 'var(--primary-color)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <span className="text-xl">🖼️</span>
-                </button>
-                <input
+                <IconButton type="button" title="Đính kèm file">
+                  <Paperclip size={20} />
+                </IconButton>
+                <IconButton type="button" title="Gửi ảnh">
+                  <ImageIcon size={20} />
+                </IconButton>
+                <Input
                   type="text"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder="Nhập tin nhắn..."
-                  className="flex-1 px-4 py-2 rounded-full outline-none"
-                  style={{
-                    backgroundColor: 'var(--hover-color)',
-                    color: 'var(--text-primary)',
-                    border: '1px solid var(--border-color)'
-                  }}
+                  style={{ borderRadius: '9999px' }}
                 />
-                <button
-                  type="button"
-                  className="p-2 rounded-lg transition-colors"
-                  style={{ color: 'var(--primary-color)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <span className="text-xl">😊</span>
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-full font-medium transition-colors"
-                  style={{
-                    backgroundColor: 'var(--primary-color)',
-                    color: '#ffffff'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-color)'}
-                >
+                <IconButton type="button" title="Emoji">
+                  <Smile size={20} />
+                </IconButton>
+                <Button type="submit" variant="primary" style={{ borderRadius: '9999px' }}>
                   Gửi
-                </button>
+                </Button>
               </form>
             </div>
           </>
@@ -381,9 +214,8 @@ const ChatPage = () => {
           style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
           {/* Profile Info */}
           <div className="p-6 text-center border-b" style={{ borderColor: 'var(--border-color)' }}>
-            <div className="w-20 h-20 rounded-full flex items-center justify-center text-4xl mx-auto mb-3"
-              style={{ backgroundColor: 'var(--hover-color)' }}>
-              {selectedChat.avatar}
+            <div className="mx-auto mb-3">
+              <Avatar emoji={selectedChat.avatar} size="large" online={selectedChat.online} />
             </div>
             <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
               {selectedChat.name}
@@ -395,21 +227,18 @@ const ChatPage = () => {
 
           {/* Action Buttons */}
           <div className="p-4 border-b grid grid-cols-3 gap-3" style={{ borderColor: 'var(--border-color)' }}>
-            <button className="flex flex-col items-center p-3 rounded-lg transition-colors"
-              style={{ backgroundColor: 'var(--hover-color)', color: 'var(--text-primary)' }}>
-              <span className="text-2xl mb-1">🔔</span>
+            <IconButton style={{ flexDirection: 'column', height: 'auto', padding: '0.75rem' }}>
+              <Bell size={24} className="mb-1" />
               <span className="text-xs">Tắt thông báo</span>
-            </button>
-            <button className="flex flex-col items-center p-3 rounded-lg transition-colors"
-              style={{ backgroundColor: 'var(--hover-color)', color: 'var(--text-primary)' }}>
-              <span className="text-2xl mb-1">📌</span>
+            </IconButton>
+            <IconButton style={{ flexDirection: 'column', height: 'auto', padding: '0.75rem' }}>
+              <Pin size={24} className="mb-1" />
               <span className="text-xs">Ghim</span>
-            </button>
-            <button className="flex flex-col items-center p-3 rounded-lg transition-colors"
-              style={{ backgroundColor: 'var(--hover-color)', color: 'var(--text-primary)' }}>
-              <span className="text-2xl mb-1">🔍</span>
+            </IconButton>
+            <IconButton style={{ flexDirection: 'column', height: 'auto', padding: '0.75rem' }}>
+              <Search size={24} className="mb-1" />
               <span className="text-xs">Tìm kiếm</span>
-            </button>
+            </IconButton>
           </div>
 
           {/* Group Members (if group chat) */}
@@ -452,7 +281,7 @@ const ChatPage = () => {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              🔒 Mã hóa đầu cuối
+              <Lock size={18} className="mr-2" /> Mã hóa đầu cuối
             </button>
             <button className="w-full text-left px-3 py-2 rounded-lg transition-colors text-red-500"
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import Button from '../components/atoms/Button/Button';
 
 const WelcomePage = () => {
   const navigate = useNavigate();
@@ -15,27 +16,20 @@ const WelcomePage = () => {
           Kết nối với bạn bè và gia đình
         </p>
         <div className="flex gap-4 justify-center">
-          <button
+          <Button
             onClick={() => navigate('/login')}
-            className="px-6 py-3 rounded-lg font-medium transition-colors"
-            style={{
-              backgroundColor: 'var(--primary-color)',
-              color: '#ffffff'
-            }}
+            variant="primary"
+            size="large"
           >
             Đăng nhập
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => navigate('/register')}
-            className="px-6 py-3 rounded-lg font-medium transition-colors"
-            style={{
-              backgroundColor: 'var(--surface-color)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)'
-            }}
+            variant="secondary"
+            size="large"
           >
             Đăng ký
-          </button>
+          </Button>
         </div>
       </div>
     </div>

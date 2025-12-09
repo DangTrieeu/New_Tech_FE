@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SearchBar from '../components/molecules/SearchBar/SearchBar';
+import ContactItem from '../components/molecules/ContactItem/ContactItem';
+import Button from '../components/atoms/Button/Button';
 
 const ContactsPage = () => {
   const navigate = useNavigate();
@@ -21,13 +24,13 @@ const ContactsPage = () => {
       <div className="max-w-4xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <button
+          <Button
             onClick={() => navigate('/chat')}
-            className="p-2 rounded-lg transition-colors"
+            variant="ghost"
             style={{ color: 'var(--primary-color)' }}
           >
             ← Quay lại
-          </button>
+          </Button>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Danh bạ
           </h1>
@@ -36,51 +39,23 @@ const ContactsPage = () => {
 
         {/* Search */}
         <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Tìm kiếm liên hệ..."
+          <SearchBar
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg outline-none"
-            style={{
-              backgroundColor: 'var(--surface-color)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)'
-            }}
+            placeholder="Tìm kiếm liên hệ..."
           />
         </div>
 
         {/* Contacts List */}
         <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--surface-color)' }}>
           {filteredContacts.map((contact, index) => (
-            <div
+            <ContactItem
               key={contact.id}
-              className="flex items-center p-4 cursor-pointer transition-colors"
-              style={{
-                borderBottom: index < filteredContacts.length - 1 ? '1px solid var(--border-color)' : 'none'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              <div className="relative mr-4">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-                  style={{ backgroundColor: 'var(--hover-color)' }}>
-                  {contact.avatar}
-                </div>
-                {contact.status === 'online' && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2"
-                    style={{ borderColor: 'var(--surface-color)' }}></div>
-                )}
-              </div>
-              <div>
-                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  {contact.name}
-                </h3>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {contact.status === 'online' ? 'Đang hoạt động' : 'Không hoạt động'}
-                </p>
-              </div>
-            </div>
+              avatar={contact.avatar}
+              name={contact.name}
+              status={contact.status}
+              showBorder={index < filteredContacts.length - 1}
+            />
           ))}
         </div>
       </div>
