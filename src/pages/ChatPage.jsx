@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MessageCircle,
@@ -27,11 +27,10 @@ import toast from 'react-hot-toast';
 const ChatPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { socket, joinRoom, sendMessage, onReceiveMessage } = useSocket();
+  const { socket, connected, sendMessage, onReceiveMessage } = useSocket();
   const { isDarkMode, toggleTheme } = useTheme();
 
   // States
-  const [activeTab, setActiveTab] = useState('messages'); // messages, contacts, profile, about
   const [showSettings, setShowSettings] = useState(false);
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -41,6 +40,15 @@ const ChatPage = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Ref for messages end
+  const messagesEndRef = useRef(null);
+  const selectedRoomRef = useRef(null);
+
+  // Update ref when selectedRoom changes
+  useEffect(() => {
+    selectedRoomRef.current = selectedRoom;
+  }, [selectedRoom]);
 
   // Define functions before useEffect
   const loadRooms = async () => {
@@ -56,9 +64,32 @@ const ChatPage = () => {
     try {
       setLoading(true);
       const response = await messageService.getMessages(roomId);
-      setMessages(response.data || response.messages || []);
+      const messagesData = response.data || response.messages || [];
+
+      console.log('[ChatPage] Raw API response:', response);
+      console.log('[ChatPage] Messages data:', messagesData);
+      console.log('[ChatPage] First message sample:', messagesData[0]);
+
+      // Map dữ liệu để đảm bảo có sender_id
+      const normalizedMessages = messagesData.map(msg => ({
+        ...msg,
+        // Thử các tên trường có thể có từ backend
+        sender_id: msg.sender_id || msg.senderId || msg.user_id || msg.userId || msg.sender?.id,
+      }));
+
+      // Sort messages by created_at - tin nhắn cũ nhất trước, mới nhất sau (ở dưới)
+      const sortedMessages = normalizedMessages.sort((a, b) => {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        return dateA - dateB; // Ascending order - cũ -> mới
+      });
+
+      console.log('[ChatPage] Normalized first message:', sortedMessages[0]);
+      console.log('[ChatPage] Last message:', sortedMessages[sortedMessages.length - 1]);
+
+      setMessages(sortedMessages);
     } catch (error) {
-      console.error('Load messages failed:', error);
+      console.error('[ChatPage] Load messages failed:', error);
       toast.error('Không thể tải tin nhắn');
     } finally {
       setLoading(false);
@@ -70,29 +101,103 @@ const ChatPage = () => {
     loadRooms();
   }, []);
 
-  // Listen for new messages
+  // Listen for new messages - ONLY setup once when socket is ready
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !connected) {
+      console.log('[ChatPage] Socket not ready yet. Socket exists:', !!socket, 'Connected:', connected);
+      return;
+    }
 
-    const unsubscribe = onReceiveMessage((message) => {
-      if (selectedRoom && message.room_id === selectedRoom.id) {
-        setMessages((prev) => [...prev, message]);
-      }
-      // Update room list
-      loadRooms();
+    console.log('[ChatPage] Setting up receive_message listener');
+    console.log('[ChatPage] Socket ID:', socket.id);
+    console.log('[ChatPage] Socket connected:', connected);
+    console.log('[ChatPage] Socket object:', socket);
+
+    // Listen to ALL events để debug
+    socket.onAny((eventName, ...args) => {
+      console.log('[ChatPage] ========== RECEIVED ANY EVENT ==========');
+      console.log('[ChatPage] Event name:', eventName);
+      console.log('[ChatPage] Event data:', args);
+      console.log('[ChatPage] ==========================================');
     });
 
-    return unsubscribe;
-  }, [socket, selectedRoom]);
+    const handleReceiveMessage = (message) => {
+      console.log('[ChatPage] ========== RECEIVE_MESSAGE EVENT ==========');
+      console.log('[ChatPage] Received message:', message);
+      console.log('[ChatPage] Current user ID:', user?.id);
+      console.log('[ChatPage] Message sender ID:', message.sender_id);
+      console.log('[ChatPage] Current selected room ID (from ref):', selectedRoomRef.current?.id);
+      console.log('[ChatPage] Message room ID:', message.room_id);
+
+      // Normalize message data
+      const normalizedMessage = {
+        ...message,
+        sender_id: message.sender_id || message.senderId || message.user_id || message.userId || message.sender?.id,
+      };
+
+      console.log('[ChatPage] Normalized received message:', normalizedMessage);
+
+      // Cập nhật messages nếu là phòng hiện tại - SỬ DỤNG REF
+      if (selectedRoomRef.current && message.room_id === selectedRoomRef.current.id) {
+        console.log('[ChatPage] Message is for current room, updating messages');
+        setMessages((prev) => {
+          // Xóa tin nhắn tạm thời (temp message) nếu có
+          const withoutTemp = prev.filter(msg => !msg.id.toString().startsWith('temp-'));
+
+          // Tránh duplicate nếu tin nhắn đã tồn tại
+          const exists = withoutTemp.some(msg => msg.id === normalizedMessage.id);
+          if (exists) {
+            console.log('[ChatPage] Duplicate message detected, skipping');
+            return prev;
+          }
+
+          // Thêm tin nhắn mới vào cuối mảng (tin nhắn mới nhất ở dưới)
+          console.log('[ChatPage] Adding new message to bottom');
+          return [...withoutTemp, normalizedMessage];
+        });
+      } else {
+        console.log('[ChatPage] Message is NOT for current room or no room selected');
+      }
+
+      // Luôn reload room list để cập nhật last_message
+      loadRooms();
+      console.log('[ChatPage] ========================================');
+    };
+
+    console.log('[ChatPage] Registering receive_message listener on socket:', socket.id);
+    socket.on('receive_message', handleReceiveMessage);
+
+    // Test: Thử emit một event để xem socket có hoạt động không
+    console.log('[ChatPage] Testing socket by emitting a test ping');
+
+    return () => {
+      console.log('[ChatPage] Cleanup: Removing receive_message listener and onAny');
+      socket.off('receive_message', handleReceiveMessage);
+      socket.offAny(); // Remove the catch-all listener
+    };
+  }, [connected, socket, user]); // Sử dụng connected state thay vì socket?.connected
 
   // Load messages when room selected
   useEffect(() => {
     if (selectedRoom) {
+      console.log('[ChatPage] Room selected:', selectedRoom.id);
       loadMessages(selectedRoom.id);
-      joinRoom(selectedRoom.id);
+      if (socket) {
+        console.log('[ChatPage] Emitting join_room for room:', selectedRoom.id);
+        socket.emit('join_room', { roomId: selectedRoom.id });
+      } else {
+        console.error('[ChatPage] Cannot join room - socket not available');
+      }
       setShowRoomInfo(false);
     }
-  }, [selectedRoom]);
+  }, [selectedRoom, socket]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -104,8 +209,48 @@ const ChatPage = () => {
       type: 'TEXT',
     };
 
-    sendMessage(messageData);
+    // Tạo temporary message để hiển thị ngay (optimistic update)
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      content: messageData.content,
+      sender_id: user?.id,
+      sender: user,
+      room_id: selectedRoom.id,
+      type: 'TEXT',
+      created_at: new Date().toISOString(),
+      status: 'sending',
+    };
+
+    console.log('[ChatPage] ========== SEND_MESSAGE ==========');
+    console.log('[ChatPage] Sending message data:', messageData);
+    console.log('[ChatPage] Socket exists:', !!socket);
+    console.log('[ChatPage] Socket connected:', socket?.connected);
+    console.log('[ChatPage] Socket ID:', socket?.id);
+
+    // Thêm message vào UI ngay lập tức
+    setMessages((prev) => [...prev, tempMessage]);
     setMessageInput('');
+
+    // Gửi qua socket
+    if (socket && socket.connected) {
+      console.log('[ChatPage] Calling sendMessage function from SocketContext');
+      sendMessage(messageData);
+
+      // Log để debug
+      setTimeout(() => {
+        console.log('[ChatPage] 2 seconds after sending - waiting for receive_message event');
+      }, 2000);
+    } else {
+      console.error('[ChatPage] FAILED - Socket not connected!', {
+        socketExists: !!socket,
+        connected: socket?.connected
+      });
+      toast.error('Không thể gửi tin nhắn. Vui lòng kiểm tra kết nối.');
+
+      // Xóa temp message nếu socket không connected
+      setMessages((prev) => prev.filter(msg => msg.id !== tempMessage.id));
+    }
+    console.log('[ChatPage] =====================================');
   };
 
   const handleSearch = async (query) => {
@@ -361,6 +506,9 @@ const ChatPage = () => {
                 <div className="space-y-3">
                   {messages.map((msg) => {
                     const isOwn = msg.sender_id === user?.id;
+                    // Xóa console.log để tránh spam logs
+                    // console.log(`Message ${index}:`, {...});
+
                     return (
                       <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
@@ -374,17 +522,20 @@ const ChatPage = () => {
                             style={{
                               backgroundColor: isOwn ? 'var(--primary-color)' : 'var(--surface-color)',
                               color: isOwn ? '#fff' : 'var(--text-primary)',
+                              opacity: msg.status === 'sending' ? 0.7 : 1,
                             }}
                           >
                             <p className="break-words">{msg.content}</p>
                           </div>
                           <p className="text-xs mt-1 px-2" style={{ color: 'var(--text-secondary)' }}>
                             {new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            {msg.status === 'sending' && ' • Đang gửi...'}
                           </p>
                         </div>
                       </div>
                     );
                   })}
+                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
