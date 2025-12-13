@@ -1,24 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import LoginForm from '../components/organisms/LoginForm/LoginForm';
+import { useAuth } from '@/contexts/AuthContext';
+import LoginForm from '@/components/organisms/LoginForm/LoginForm';
+import logo from '@/assets/logo.png';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  // Redirect nếu đã đăng nhập - CHỈ khi không đang loading
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      // Delay nhỏ để đảm bảo state đã ổn định
+      const timer = setTimeout(() => {
+        navigate('/chat', { replace: true });
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Giả lập đăng nhập thành công
-    localStorage.setItem('token', 'dummy-token');
-    navigate('/chat');
+
+    // Validation
+    if (!email || !password) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await login(email, password);
+      // Navigate sẽ được xử lý bởi useEffect khi isAuthenticated thay đổi
+    } catch (error) {
+      console.error('Login failed:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background-color)' }}>
       <div className="w-full max-w-md p-8 rounded-2xl" style={{ backgroundColor: 'var(--surface-color)' }}>
         <div className="text-center mb-8">
-          <div className="text-5xl mb-4">💬</div>
+          <img src={logo} alt="Logo" className="mx-auto mb-4 w-24 h-24 object-contain" />
           <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Đăng nhập</h2>
         </div>
 
@@ -29,6 +57,7 @@ const LoginPage = () => {
           onPasswordChange={(e) => setPassword(e.target.value)}
           onSubmit={handleSubmit}
           onNavigateToRegister={() => navigate('/register')}
+          loading={loading}
         />
       </div>
     </div>
@@ -36,4 +65,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-

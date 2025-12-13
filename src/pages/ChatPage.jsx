@@ -1,206 +1,431 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Paperclip, Image as ImageIcon, Smile, Bell, Pin, Search, Lock, ChevronRight, ChevronLeft } from 'lucide-react';
-import { ThemeContext } from '../contexts/ThemeContext';
-import ChatSidebar from '../components/organisms/ChatSidebar/ChatSidebar';
-import Button from '../components/atoms/Button/Button';
-import IconButton from '../components/atoms/Button/IconButton';
-import Input from '../components/atoms/Input/Input';
-import Avatar from '../components/atoms/Avatar/Avatar';
+import {
+  MessageCircle,
+  Users,
+  User,
+  Info,
+  LogOut,
+  Settings,
+  Moon,
+  Sun,
+  Search,
+  Send,
+  Paperclip,
+  Smile,
+  Phone,
+  Video
+} from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/contexts/SocketContext';
+import { useTheme } from '@/hooks/useTheme';
+import * as roomService from '@/services/roomService';
+import * as messageService from '@/services/messageService';
+import * as userService from '@/services/userService';
+import toast from 'react-hot-toast';
 
 const ChatPage = () => {
-  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { socket, joinRoom, sendMessage, onReceiveMessage } = useSocket();
+  const { isDarkMode, toggleTheme } = useTheme();
+
+  // States
+  const [activeTab, setActiveTab] = useState('messages'); // messages, contacts, profile, about
   const [showSettings, setShowSettings] = useState(false);
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [showRightPanel, setShowRightPanel] = useState(true);
+  const [rooms, setRooms] = useState([]);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showRoomInfo, setShowRoomInfo] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Dữ liệu mẫu cho danh sách chat
-  const [chatList] = useState([
-    {
-      id: 1,
-      name: 'Nguyễn Văn A',
-      avatar: '👤',
-      lastMessage: 'Hello, how are you?',
-      time: '10:30',
-      unread: 2,
-      online: true,
-      type: 'personal'
-    },
-    {
-      id: 2,
-      name: 'Nhóm Dự Án',
-      avatar: '👥',
-      lastMessage: 'Meeting lúc 2pm nhé',
-      time: '09:15',
-      unread: 0,
-      online: false,
-      type: 'group',
-      members: ['User 1', 'User 2', 'User 3']
-    },
-    {
-      id: 3,
-      name: 'Trần Thị B',
-      avatar: '👤',
-      lastMessage: 'Cảm ơn bạn nhé!',
-      time: 'Hôm qua',
-      unread: 0,
-      online: false,
-      type: 'personal'
-    },
-  ]);
-
-  // Dữ liệu mẫu cho tin nhắn
-  const [messages, setMessages] = useState([
-    { id: 1, text: 'Chào bạn!', sender: 'other', time: '10:00' },
-    { id: 2, text: 'Hello, how are you?', sender: 'other', time: '10:30' },
-    { id: 3, text: 'Tôi khỏe, cảm ơn bạn!', sender: 'me', time: '10:31' },
-  ]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-  };
-
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (messageInput.trim() && selectedChat) {
-      const newMessage = {
-        id: messages.length + 1,
-        text: messageInput,
-        sender: 'me',
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages([...messages, newMessage]);
-      setMessageInput('');
+  // Define functions before useEffect
+  const loadRooms = async () => {
+    try {
+      const response = await roomService.getRooms();
+      setRooms(response.data || response.rooms || []);
+    } catch (error) {
+      console.error('Load rooms failed:', error);
     }
   };
 
-  const filteredChats = chatList.filter(chat =>
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const loadMessages = async (roomId) => {
+    try {
+      setLoading(true);
+      const response = await messageService.getMessages(roomId);
+      setMessages(response.data || response.messages || []);
+    } catch (error) {
+      console.error('Load messages failed:', error);
+      toast.error('Không thể tải tin nhắn');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load rooms on mount
+  useEffect(() => {
+    loadRooms();
+  }, []);
+
+  // Listen for new messages
+  useEffect(() => {
+    if (!socket) return;
+
+    const unsubscribe = onReceiveMessage((message) => {
+      if (selectedRoom && message.room_id === selectedRoom.id) {
+        setMessages((prev) => [...prev, message]);
+      }
+      // Update room list
+      loadRooms();
+    });
+
+    return unsubscribe;
+  }, [socket, selectedRoom]);
+
+  // Load messages when room selected
+  useEffect(() => {
+    if (selectedRoom) {
+      loadMessages(selectedRoom.id);
+      joinRoom(selectedRoom.id);
+      setShowRoomInfo(false);
+    }
+  }, [selectedRoom]);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!messageInput.trim() || !selectedRoom) return;
+
+    const messageData = {
+      roomId: selectedRoom.id,
+      content: messageInput.trim(),
+      type: 'TEXT',
+    };
+
+    sendMessage(messageData);
+    setMessageInput('');
+  };
+
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const response = await userService.searchUsers(query);
+      setSearchResults(response.data || response.users || []);
+    } catch (error) {
+      console.error('Search failed:', error);
+    }
+  };
+
+  const handleCreatePrivateChat = async (partnerId) => {
+    try {
+      const response = await roomService.createPrivateRoom(partnerId);
+      const room = response.data || response.room;
+      setSelectedRoom(room);
+      await loadRooms();
+      setSearchQuery('');
+      setSearchResults([]);
+    } catch (error) {
+      console.error('Create room failed:', error);
+      toast.error('Không thể tạo cuộc trò chuyện');
+    }
+  };
+
+  const handleLogout = async () => {
+    if (window.confirm('Bạn có chắc muốn đăng xuất?')) {
+      await logout();
+    }
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background-color)' }}>
-      {/* Left Sidebar - Chat List */}
-      <ChatSidebar
-        searchQuery={searchQuery}
-        onSearchChange={(e) => setSearchQuery(e.target.value)}
-        chats={filteredChats}
-        selectedChatId={selectedChat?.id}
-        onChatSelect={setSelectedChat}
-        onSettingsClick={() => setShowSettings(!showSettings)}
-        showSettings={showSettings}
-        // SettingsMenu props
-        onMessageClick={() => {
-          setShowSettings(false);
-          navigate('/chat');
-        }}
-        onContactsClick={() => {
-          setShowSettings(false);
-          navigate('/contacts');
-        }}
-        onProfileClick={() => {
-          setShowSettings(false);
-          navigate('/profile');
-        }}
-        onAboutClick={() => {
-          setShowSettings(false);
-          navigate('/about');
-        }}
-        onThemeToggle={() => {
-          toggleTheme();
-          setShowSettings(false);
-        }}
-        onLogout={handleLogout}
-        isDarkMode={isDarkMode}
-      />
+    <div className="h-screen flex overflow-hidden" style={{ backgroundColor: 'var(--background-color)' }}>
+      {/* LEFT SIDEBAR - Chat List */}
+      <div
+        className="w-80 flex flex-col border-r"
+        style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}
+      >
+        {/* Header with User Info */}
+        <div className="p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              Chat App
+            </h1>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
 
-      {/* Center - Chat Window */}
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+            <input
+              type="text"
+              placeholder="Tìm kiếm..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg outline-none"
+              style={{
+                backgroundColor: 'var(--background-color)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Settings Menu */}
+        {showSettings && (
+          <div className="border-b p-2" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--background-color)' }}>
+            <button
+              onClick={() => { navigate('/profile'); setShowSettings(false); }}
+              className="w-full flex items-center px-3 py-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <User className="w-4 h-4 mr-3" />
+              Cá nhân
+            </button>
+            <button
+              onClick={() => { navigate('/contacts'); setShowSettings(false); }}
+              className="w-full flex items-center px-3 py-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <Users className="w-4 h-4 mr-3" />
+              Danh bạ
+            </button>
+            <button
+              onClick={() => { navigate('/about'); setShowSettings(false); }}
+              className="w-full flex items-center px-3 py-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <Info className="w-4 h-4 mr-3" />
+              Giới thiệu
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center px-3 py-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 mr-3" /> : <Moon className="w-4 h-4 mr-3" />}
+              {isDarkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center px-3 py-2 rounded-lg hover:bg-opacity-10 hover:bg-red-500 text-red-500"
+            >
+              <LogOut className="w-4 h-4 mr-3" />
+              Đăng xuất
+            </button>
+          </div>
+        )}
+
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-2">
+              <p className="px-3 py-2 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                Kết quả tìm kiếm
+              </p>
+              {searchResults.map((searchUser) => (
+                <button
+                  key={searchUser.id}
+                  onClick={() => handleCreatePrivateChat(searchUser.id)}
+                  className="w-full flex items-center p-3 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+                >
+                  <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold mr-3">
+                    {searchUser.avatar_url ? (
+                      <img src={searchUser.avatar_url} alt={searchUser.name} className="w-12 h-12 rounded-full object-cover" />
+                    ) : (
+                      searchUser.name?.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {searchUser.name}
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {searchUser.email}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Room List */}
+        {!searchQuery && (
+          <div className="flex-1 overflow-y-auto">
+            {rooms.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                <MessageCircle className="w-12 h-12 mb-3" style={{ color: 'var(--text-secondary)' }} />
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  Chưa có cuộc trò chuyện nào
+                </p>
+              </div>
+            ) : (
+              rooms.map((room) => (
+                <button
+                  key={room.id}
+                  onClick={() => setSelectedRoom(room)}
+                  className={`w-full flex items-center p-3 hover:bg-opacity-10 hover:bg-gray-500 ${
+                    selectedRoom?.id === room.id ? 'bg-opacity-10 bg-blue-500' : ''
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold mr-3">
+                    {room.type === 'PRIVATE' ? (
+                      room.partner?.avatar_url ? (
+                        <img src={room.partner.avatar_url} alt={room.name} className="w-12 h-12 rounded-full object-cover" />
+                      ) : (
+                        room.name?.charAt(0).toUpperCase()
+                      )
+                    ) : (
+                      <Users className="w-6 h-6" />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left overflow-hidden">
+                    <p className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                      {room.name}
+                    </p>
+                    <p className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>
+                      {room.last_message?.content || 'Chưa có tin nhắn'}
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* MIDDLE - Chat Area */}
       <div className="flex-1 flex flex-col">
-        {selectedChat ? (
+        {selectedRoom ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center justify-between"
-              style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
+            <div className="h-16 px-4 flex items-center justify-between border-b" style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}>
               <div className="flex items-center">
-                <div className="mr-3">
-                  <Avatar emoji={selectedChat.avatar} size="medium" online={selectedChat.online} />
+                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold mr-3">
+                  {selectedRoom.type === 'PRIVATE' && selectedRoom.partner?.avatar_url ? (
+                    <img src={selectedRoom.partner.avatar_url} alt={selectedRoom.name} className="w-10 h-10 rounded-full object-cover" />
+                  ) : (
+                    selectedRoom.name?.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div>
-                  <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {selectedChat.name}
-                  </h2>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {selectedChat.online ? 'Đang hoạt động' : 'Không hoạt động'}
+                  <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {selectedRoom.name}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {selectedRoom.type === 'PRIVATE' ? 'Trực tuyến' : `${selectedRoom.participant_count || 0} thành viên`}
                   </p>
                 </div>
               </div>
-              <IconButton
-                onClick={() => setShowRightPanel(!showRightPanel)}
-                title={showRightPanel ? 'Ẩn panel' : 'Hiện panel'}
-              >
-                {showRightPanel ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-              </IconButton>
+              <div className="flex items-center gap-2">
+                <button className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500" style={{ color: 'var(--text-secondary)' }}>
+                  <Phone className="w-5 h-5" />
+                </button>
+                <button className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500" style={{ color: 'var(--text-secondary)' }}>
+                  <Video className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowRoomInfo(!showRoomInfo)}
+                  className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--background-color)' }}>
-              {messages.map(msg => (
-                <div key={msg.id} className={`flex mb-4 ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-md ${msg.sender === 'me' ? 'order-2' : 'order-1'}`}>
-                    <div
-                      className="px-4 py-2 rounded-2xl inline-block"
-                      style={{
-                        backgroundColor: msg.sender === 'me' ? 'var(--primary-color)' : 'var(--surface-color)',
-                        color: msg.sender === 'me' ? '#ffffff' : 'var(--text-primary)',
-                      }}
-                    >
-                      {msg.text}
-                    </div>
-                    <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                      {msg.time}
-                    </p>
-                  </div>
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                 </div>
-              ))}
+              ) : messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <p style={{ color: 'var(--text-secondary)' }}>Chưa có tin nhắn nào</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {messages.map((msg) => {
+                    const isOwn = msg.sender_id === user?.id;
+                    return (
+                      <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
+                          {!isOwn && (
+                            <p className="text-xs mb-1 px-2" style={{ color: 'var(--text-secondary)' }}>
+                              {msg.sender?.name || 'Unknown'}
+                            </p>
+                          )}
+                          <div
+                            className="px-4 py-2 rounded-2xl"
+                            style={{
+                              backgroundColor: isOwn ? 'var(--primary-color)' : 'var(--surface-color)',
+                              color: isOwn ? '#fff' : 'var(--text-primary)',
+                            }}
+                          >
+                            <p className="break-words">{msg.content}</p>
+                          </div>
+                          <p className="text-xs mt-1 px-2" style={{ color: 'var(--text-secondary)' }}>
+                            {new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
+            <div className="p-4 border-t" style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}>
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <IconButton type="button" title="Đính kèm file">
-                  <Paperclip size={20} />
-                </IconButton>
-                <IconButton type="button" title="Gửi ảnh">
-                  <ImageIcon size={20} />
-                </IconButton>
-                <Input
+                <button type="button" className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500" style={{ color: 'var(--text-secondary)' }}>
+                  <Paperclip className="w-5 h-5" />
+                </button>
+                <button type="button" className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500" style={{ color: 'var(--text-secondary)' }}>
+                  <Smile className="w-5 h-5" />
+                </button>
+                <input
                   type="text"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder="Nhập tin nhắn..."
-                  style={{ borderRadius: '9999px' }}
+                  className="flex-1 px-4 py-2 rounded-lg outline-none"
+                  style={{
+                    backgroundColor: 'var(--background-color)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border-color)',
+                  }}
                 />
-                <IconButton type="button" title="Emoji">
-                  <Smile size={20} />
-                </IconButton>
-                <Button type="submit" variant="primary" style={{ borderRadius: '9999px' }}>
-                  Gửi
-                </Button>
+                <button
+                  type="submit"
+                  disabled={!messageInput.trim()}
+                  className="p-2 rounded-lg disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}
+                >
+                  <Send className="w-5 h-5" />
+                </button>
               </form>
             </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--background-color)' }}>
             <div className="text-center">
-              <div className="text-6xl mb-4">💬</div>
-              <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-                Chào mừng đến với Chat
-              </h2>
-              <p style={{ color: 'var(--text-secondary)' }}>
+              <MessageCircle className="w-20 h-20 mx-auto mb-4" style={{ color: 'var(--text-secondary)' }} />
+              <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
                 Chọn một cuộc trò chuyện để bắt đầu
               </p>
             </div>
@@ -208,87 +433,61 @@ const ChatPage = () => {
         )}
       </div>
 
-      {/* Right Sidebar - Info Panel */}
-      {showRightPanel && selectedChat && (
-        <div className="w-80 border-l overflow-y-auto"
-          style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
-          {/* Profile Info */}
-          <div className="p-6 text-center border-b" style={{ borderColor: 'var(--border-color)' }}>
-            <div className="mx-auto mb-3">
-              <Avatar emoji={selectedChat.avatar} size="large" online={selectedChat.online} />
+      {/* RIGHT SIDEBAR - Room Info */}
+      {showRoomInfo && selectedRoom && (
+        <div
+          className="w-80 border-l overflow-y-auto"
+          style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}
+        >
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white text-3xl font-semibold mx-auto mb-3">
+                {selectedRoom.type === 'PRIVATE' && selectedRoom.partner?.avatar_url ? (
+                  <img src={selectedRoom.partner.avatar_url} alt={selectedRoom.name} className="w-24 h-24 rounded-full object-cover" />
+                ) : (
+                  selectedRoom.name?.charAt(0).toUpperCase()
+                )}
+              </div>
+              <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+                {selectedRoom.name}
+              </h3>
+              {selectedRoom.type === 'PRIVATE' && (
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {selectedRoom.partner?.email}
+                </p>
+              )}
             </div>
-            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-              {selectedChat.name}
-            </h3>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {selectedChat.online ? 'Đang hoạt động' : 'Không hoạt động'}
-            </p>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="p-4 border-b grid grid-cols-3 gap-3" style={{ borderColor: 'var(--border-color)' }}>
-            <IconButton style={{ flexDirection: 'column', height: 'auto', padding: '0.75rem' }}>
-              <Bell size={24} className="mb-1" />
-              <span className="text-xs">Tắt thông báo</span>
-            </IconButton>
-            <IconButton style={{ flexDirection: 'column', height: 'auto', padding: '0.75rem' }}>
-              <Pin size={24} className="mb-1" />
-              <span className="text-xs">Ghim</span>
-            </IconButton>
-            <IconButton style={{ flexDirection: 'column', height: 'auto', padding: '0.75rem' }}>
-              <Search size={24} className="mb-1" />
-              <span className="text-xs">Tìm kiếm</span>
-            </IconButton>
-          </div>
-
-          {/* Group Members (if group chat) */}
-          {selectedChat.type === 'group' && (
-            <div className="p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-              <h4 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-                Thành viên nhóm
-              </h4>
-              {selectedChat.members?.map((member, index) => (
-                <div key={index} className="flex items-center mb-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl mr-3"
-                    style={{ backgroundColor: 'var(--hover-color)' }}>
-                    👤
+            <div className="space-y-4">
+              <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
+                <h4 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  Thông tin
+                </h4>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loại</p>
+                    <p style={{ color: 'var(--text-primary)' }}>
+                      {selectedRoom.type === 'PRIVATE' ? 'Trò chuyện riêng' : 'Nhóm'}
+                    </p>
                   </div>
-                  <span style={{ color: 'var(--text-primary)' }}>{member}</span>
+                  <div>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Ngày tạo</p>
+                    <p style={{ color: 'var(--text-primary)' }}>
+                      {new Date(selectedRoom.created_at).toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
 
-          {/* Shared Media */}
-          <div className="p-4">
-            <h4 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
-              Ảnh & Video
-            </h4>
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="aspect-square rounded-lg flex items-center justify-center text-2xl"
-                  style={{ backgroundColor: 'var(--hover-color)' }}>
-                  🖼️
+              {selectedRoom.type === 'GROUP' && (
+                <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
+                  <h4 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+                    Thành viên ({selectedRoom.participant_count || 0})
+                  </h4>
+                  {/* Add members list here */}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-
-          {/* Privacy Settings */}
-          <div className="p-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
-            <button className="w-full text-left px-3 py-2 rounded-lg transition-colors mb-2"
-              style={{ color: 'var(--text-primary)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              <Lock size={18} className="mr-2" /> Mã hóa đầu cuối
-            </button>
-            <button className="w-full text-left px-3 py-2 rounded-lg transition-colors text-red-500"
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hover-color)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              🚫 Chặn người dùng
-            </button>
           </div>
         </div>
       )}
