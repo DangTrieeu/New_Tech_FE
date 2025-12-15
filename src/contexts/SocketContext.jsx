@@ -36,22 +36,16 @@ export const SocketProvider = ({ children }) => {
 
     if (!token || socketRef.current) return;
 
-    console.log('[SocketContext] Connecting to:', API_BASE_URL);
-    console.log('[SocketContext] Token exists:', !!token);
-
     const newSocket = io(API_BASE_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
     });
 
     newSocket.on('connect', () => {
-      console.log('[SocketContext] Socket connected, ID:', newSocket.id);
-      console.log('[SocketContext] Connected status:', newSocket.connected);
       setConnected(true);
     });
 
     newSocket.on('disconnect', () => {
-      console.log('[SocketContext] Socket disconnected');
       setConnected(false);
     });
 
@@ -66,7 +60,6 @@ export const SocketProvider = ({ children }) => {
 
   const disconnectSocket = () => {
     if (socketRef.current) {
-      console.log('[SocketContext] Disconnecting socket');
       socketRef.current.disconnect();
       socketRef.current = null;
       setSocket(null);
@@ -77,14 +70,8 @@ export const SocketProvider = ({ children }) => {
   // Join room
   const joinRoom = (roomId) => {
     if (socket && socket.connected) {
-      console.log('[SocketContext] Emitting join_room, roomId:', roomId);
       // Emit as object for consistency with send_message
       socket.emit('join_room', { roomId });
-
-      // Verify join bằng cách log rooms hiện tại
-      setTimeout(() => {
-        console.log('[SocketContext] Socket rooms after join:', socket.rooms);
-      }, 100);
     } else {
       console.error('[SocketContext] Cannot join room - socket not connected');
     }
@@ -93,7 +80,6 @@ export const SocketProvider = ({ children }) => {
   // Leave room
   const leaveRoom = (roomId) => {
     if (socket) {
-      console.log('[SocketContext] Emitting leave_room, roomId:', roomId);
       // Emit as object for consistency
       socket.emit('leave_room', { roomId });
     }
@@ -102,13 +88,6 @@ export const SocketProvider = ({ children }) => {
   // Send message
   const sendMessage = (data) => {
     if (socket && socket.connected) {
-      console.log('[SocketContext] Emitting send_message:', {
-        roomId: data.roomId,
-        content: data.content,
-        type: data.type,
-        socketId: socket.id,
-        connected: socket.connected
-      });
       socket.emit('send_message', data);
     } else {
       console.error('[SocketContext] Cannot send message - socket not connected:', {
