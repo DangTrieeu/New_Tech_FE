@@ -12,6 +12,9 @@ import ProfilePage from './pages/ProfilePage';
 import ContactsPage from './pages/ContactsPage';
 import AboutPage from './pages/AboutPage';
 import WelcomePage from './pages/WelcomePage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import UserManagementPage from './pages/UserManagementPage';
+import RoomManagementPage from './pages/RoomManagementPage';
 
 function App() {
   return (
@@ -80,6 +83,11 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Admin Routes - No separate login, use /login */}
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/users" element={<UserManagementPage />} />
+              <Route path="/admin/rooms" element={<RoomManagementPage />} />
 
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

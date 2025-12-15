@@ -53,28 +53,41 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Đăng nhập
+  // Đăng nhập (support cả USER và ADMIN)
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);
+      
+      console.log('AuthContext - Full response:', response);
 
-      // Backend trả về structure: { status, message, data: { accessToken, refreshToken, user } }
-      const responseData = response.data || response;
+      // authService.login return response.data = { status: 200, message: "...", data: {...} }
+      // Nên response = { status: 200, message: "...", data: {...} }
+      const payload = response.data;
+
+      console.log('AuthContext - payload:', payload);
 
       // Kiểm tra response có đúng format không
-      if (!responseData.accessToken || !responseData.refreshToken) {
+      if (!payload || !payload.accessToken || !payload.refreshToken) {
+        console.error('Invalid response structure:', { response, payload });
         throw new Error('Response không có accessToken hoặc refreshToken');
       }
 
-      // Lưu tokens
-      localStorage.setItem('accessToken', responseData.accessToken);
-      localStorage.setItem('refreshToken', responseData.refreshToken);
-
       // Update states
-      const userData = responseData.user;
+      const userData = payload.user;
 
       if (!userData) {
         throw new Error('Response không có thông tin user');
+      }
+
+      const isAdmin = userData.role === 'ADMIN';
+
+      // Lưu tokens dựa trên role
+      if (isAdmin) {
+        localStorage.setItem('adminAccessToken', payload.accessToken);
+        localStorage.setItem('adminRefreshToken', payload.refreshToken);
+      } else {
+        localStorage.setItem('accessToken', payload.accessToken);
+        localStorage.setItem('refreshToken', payload.refreshToken);
       }
 
       setUser(userData);
@@ -83,8 +96,9 @@ export const AuthProvider = ({ children }) => {
 
       toast.success('Đăng nhập thành công!');
 
-      return response;
+      return { userData, isAdmin: userData.role === 'ADMIN' };
     } catch (error) {
+      console.error('Login error:', error);
       const message = error.response?.data?.message || error.message || 'Đăng nhập thất bại';
       toast.error(message);
       throw error;

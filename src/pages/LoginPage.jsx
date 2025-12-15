@@ -11,18 +11,6 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Redirect nếu đã đăng nhập - CHỈ khi không đang loading
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      // Delay nhỏ để đảm bảo state đã ổn định
-      const timer = setTimeout(() => {
-        navigate('/chat', { replace: true });
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, authLoading, navigate]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -33,8 +21,14 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      await login(email, password);
-      // Navigate sẽ được xử lý bởi useEffect khi isAuthenticated thay đổi
+      const result = await login(email, password);
+      
+      // Redirect based on role
+      if (result.isAdmin) {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        navigate('/chat', { replace: true });
+      }
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
