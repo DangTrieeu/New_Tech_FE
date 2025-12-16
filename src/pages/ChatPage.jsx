@@ -16,6 +16,7 @@ import MessageInput from '@/components/organisms/MessageInput/MessageInput';
 import RoomInfo from '@/components/organisms/RoomInfo/RoomInfo';
 import EmptyChatState from '@/components/organisms/EmptyChatState/EmptyChatState';
 import SummaryModal from '@/components/molecules/SummaryModal/SummaryModal';
+import ImageGridViewer from '@/components/molecules/ImageGridViewer/ImageGridViewer';
 
 const ChatPage = () => {
   const { user, logout } = useAuth();
@@ -41,6 +42,9 @@ const ChatPage = () => {
   const [summary, setSummary] = useState('');
   const [summarizing, setSummarizing] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false);
+
+  // Image gallery state
+  const [showImageGallery, setShowImageGallery] = useState(false);
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -415,8 +419,31 @@ const ChatPage = () => {
     }
   };
 
+  const handleGroupCreated = async (newRoom) => {
+    try {
+      // Reload rooms to include the new group
+      await loadRooms();
+      // Select the new room
+      setSelectedRoom(newRoom);
+      toast.success('Đã tạo nhóm thành công!');
+    } catch (error) {
+      console.error('Handle group created failed:', error);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleImageClick = (imageIndex) => {
+    setShowImageGallery(true);
+    // Set initial index for gallery - will be handled by ImageGallery component
+    // We'll need to pass this to ImageGridViewer
+    setTimeout(() => {
+      // Trigger gallery to open at specific index
+      const event = new CustomEvent('openGalleryAtIndex', { detail: { index: imageIndex } });
+      window.dispatchEvent(event);
+    }, 100);
   };
 
   return (
@@ -431,6 +458,7 @@ const ChatPage = () => {
         onSearchChange={handleSearch}
         searchResults={searchResults}
         onCreatePrivateChat={handleCreatePrivateChat}
+        onGroupCreated={handleGroupCreated}
         onLogout={handleLogout}
       />
 
@@ -443,6 +471,7 @@ const ChatPage = () => {
               currentUserId={user?.id}
               onToggleInfo={() => setShowRoomInfo(!showRoomInfo)}
               onSummarize={handleSummarize}
+              onShowImageGallery={() => setShowImageGallery(true)}
             />
 
             <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--background-color)' }}>
@@ -452,6 +481,7 @@ const ChatPage = () => {
                 loading={loading}
                 messagesEndRef={messagesEndRef}
                 onSelectSmartReply={handleSelectSmartReply}
+                onImageClick={handleImageClick}
               />
               {aiProcessing && (
                 <div className="flex items-center gap-2 text-sm p-3 rounded-lg mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -490,6 +520,13 @@ const ChatPage = () => {
         onClose={() => setShowSummaryModal(false)}
         summary={summary}
         loading={summarizing}
+      />
+
+      {/* Image Grid Viewer */}
+      <ImageGridViewer
+        messages={messages}
+        isOpen={showImageGallery}
+        onClose={() => setShowImageGallery(false)}
       />
     </div>
   );

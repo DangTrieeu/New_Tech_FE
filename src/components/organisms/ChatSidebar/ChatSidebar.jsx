@@ -10,9 +10,11 @@ import {
   Moon,
   Sun,
   Search,
+  UserPlus,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { getRoomDisplayName } from '@/utils/dateUtils';
+import CreateGroupModal from '@/components/molecules/CreateGroupModal/CreateGroupModal';
 
 const ChatSidebar = ({
   user,
@@ -23,11 +25,19 @@ const ChatSidebar = ({
   onSearchChange,
   searchResults,
   onCreatePrivateChat,
+  onGroupCreated,
   onLogout,
 }) => {
   const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
   const [showSettings, setShowSettings] = React.useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
+
+  const handleGroupCreated = (newRoom) => {
+    if (onGroupCreated) {
+      onGroupCreated(newRoom);
+    }
+  };
 
   return (
     <div
@@ -40,13 +50,23 @@ const ChatSidebar = ({
           <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Chat App
           </h1>
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCreateGroupModal(true)}
+              className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+              style={{ color: 'var(--text-secondary)' }}
+              title="Tạo nhóm mới"
+            >
+              <UserPlus className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -188,6 +208,14 @@ const ChatSidebar = ({
           )}
         </div>
       )}
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        onSuccess={handleGroupCreated}
+        currentUserId={user?.id}
+      />
     </div>
   );
 };

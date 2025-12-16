@@ -35,7 +35,8 @@ export const AuthProvider = ({ children }) => {
   }, [initialized]);
 
   const checkAuth = async () => {
-    const token = localStorage.getItem('accessToken');
+    // Kiểm tra cả admin token và user token
+    const token = localStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken');
 
     // Nếu không có token, không gọi API
     if (!token) {
@@ -59,9 +60,11 @@ export const AuthProvider = ({ children }) => {
       } else {
         console.error('Auth check failed:', error);
       }
-      // Clear tất cả thông tin xác thực
+      // Clear tất cả thông tin xác thực (cả admin và user)
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('adminAccessToken');
+      localStorage.removeItem('adminRefreshToken');
       setIsAuthenticated(false);
       setUser(null);
       setAccessToken(null);

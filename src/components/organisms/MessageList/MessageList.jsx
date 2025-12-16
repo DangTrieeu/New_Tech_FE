@@ -8,7 +8,7 @@ import {
   formatMessageTime,
 } from '@/utils/dateUtils';
 
-const MessageList = ({ messages, currentUserId, loading, messagesEndRef, onSelectSmartReply }) => {
+const MessageList = ({ messages, currentUserId, loading, messagesEndRef, onSelectSmartReply, onImageClick }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -44,6 +44,12 @@ const MessageList = ({ messages, currentUserId, loading, messagesEndRef, onSelec
     return 'File';
   };
 
+  // Helper function to get image index for gallery
+  const getImageIndex = (messageId) => {
+    const imageMessages = messages.filter(msg => msg.type === 'FILE' && msg.content && isImageUrl(msg.content));
+    return imageMessages.findIndex(msg => msg.id === messageId);
+  };
+
   // Render message content based on type
   const renderMessageContent = (msg) => {
     const isOwn = msg.sender_id === currentUserId;
@@ -54,7 +60,7 @@ const MessageList = ({ messages, currentUserId, loading, messagesEndRef, onSelec
       const fileName = getFileName(msg);
 
       if (isImage) {
-        // Render image - NO background, NO padding
+        // Render image - NO background, NO padding, clickable to open gallery
         return (
           <div className="space-y-2">
             <div className="rounded-lg overflow-hidden">
@@ -62,7 +68,14 @@ const MessageList = ({ messages, currentUserId, loading, messagesEndRef, onSelec
                 src={msg.content}
                 alt={fileName}
                 className="cursor-pointer hover:opacity-90 transition-opacity rounded-lg"
-                onClick={() => window.open(msg.content, '_blank')}
+                onClick={() => {
+                  if (onImageClick) {
+                    const imageIndex = getImageIndex(msg.id);
+                    onImageClick(imageIndex >= 0 ? imageIndex : 0);
+                  } else {
+                    window.open(msg.content, '_blank');
+                  }
+                }}
                 style={{ maxWidth: '300px', maxHeight: '300px', objectFit: 'contain', display: 'block' }}
                 onError={(e) => {
                   e.target.onerror = null;
@@ -76,6 +89,7 @@ const MessageList = ({ messages, currentUserId, loading, messagesEndRef, onSelec
               rel="noopener noreferrer"
               className="text-xs flex items-center gap-1 hover:underline"
               style={{ color: isOwn ? 'rgba(255,255,255,0.9)' : 'var(--primary-color)' }}
+              onClick={(e) => e.stopPropagation()}
             >
               <ImageIcon className="w-3 h-3" />
               {fileName}
