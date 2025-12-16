@@ -17,9 +17,9 @@ export const API_ENDPOINTS = {
   USER_BY_ID: (id) => `/users/${id}`,
 
   // Rooms (user routes)
-  ROOMS: '/rooms',
-  PRIVATE_ROOM: '/rooms/private',
-  GROUP_ROOM: '/rooms/group',
+  ROOMS: '/api/rooms',
+  PRIVATE_ROOM: '/api/rooms/private',
+  GROUP_ROOM: '/api/rooms/group',
 
   // Messages
   MESSAGES: (roomId) => `/api/messages/${roomId}`,

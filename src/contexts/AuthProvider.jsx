@@ -1,18 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as authService from '@/services/authService';
 import * as userService from '@/services/userService';
 import toast from 'react-hot-toast';
-
-const AuthContext = createContext(null);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-};
+import { AuthContext } from './AuthContextDefinition';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -142,7 +133,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       setUser(userData);
-      setAccessToken(responseData.accessToken);
+      setAccessToken(payload.accessToken);
       setIsAuthenticated(true);
       setLoading(false);
 
