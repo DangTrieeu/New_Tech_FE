@@ -47,6 +47,14 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Không retry cho các auth endpoints (login, register, refresh)
+    const authEndpoints = ['/auth', '/users/register', '/auth/refresh', '/auth/logout'];
+    const isAuthEndpoint = authEndpoints.some(endpoint => originalRequest.url?.includes(endpoint));
+
+    if (isAuthEndpoint) {
+      return Promise.reject(error);
+    }
+
     // Nếu lỗi 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {

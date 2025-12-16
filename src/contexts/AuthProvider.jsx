@@ -101,19 +101,38 @@ export const AuthProvider = ({ children }) => {
   // Đăng nhập
   const login = async (email, password) => {
     try {
+      // Clear any old tokens before login to avoid sending invalid tokens
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('adminAccessToken');
+      localStorage.removeItem('adminRefreshToken');
+
+      console.log('[AuthProvider] Attempting login with:', { email });
+
       const response = await authService.login(email, password);
 
-      console.log('AuthContext - Full response:', response);
+      console.log('[AuthProvider] Login response received:', {
+        hasData: !!response,
+        hasDataProperty: !!response?.data,
+        dataKeys: response?.data ? Object.keys(response.data) : [],
+        responseKeys: Object.keys(response)
+      });
 
-      // authService.login return response.data = { status: 200, message: "...", data: {...} }
-      // Nên response = { status: 200, message: "...", data: {...} }
-      const payload = response.data;
+      // authService.login returns response.data from axios
+      // Backend returns: { status, message, data: { accessToken, refreshToken, user } }
+      // So we need to access response.data to get the actual payload
+      const payload = response.data || response;
 
-      console.log('AuthContext - payload:', payload);
+      console.log('[AuthProvider] Payload extracted:', {
+        hasAccessToken: !!payload?.accessToken,
+        hasRefreshToken: !!payload?.refreshToken,
+        hasUser: !!payload?.user,
+        userRole: payload?.user?.role
+      });
 
       // Kiểm tra response có đúng format không
       if (!payload || !payload.accessToken || !payload.refreshToken) {
-        console.error('Invalid response structure:', { response, payload });
+        console.error('[AuthProvider] Invalid response structure:', { response, payload });
         throw new Error('Response không có accessToken hoặc refreshToken');
       }
 
@@ -130,9 +149,11 @@ export const AuthProvider = ({ children }) => {
       if (isAdmin) {
         localStorage.setItem('adminAccessToken', payload.accessToken);
         localStorage.setItem('adminRefreshToken', payload.refreshToken);
+        console.log('[AuthProvider] Admin tokens saved to localStorage');
       } else {
         localStorage.setItem('accessToken', payload.accessToken);
         localStorage.setItem('refreshToken', payload.refreshToken);
+        console.log('[AuthProvider] User tokens saved to localStorage');
       }
 
       setUser(userData);
@@ -140,11 +161,22 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setLoading(false);
 
+      console.log('[AuthProvider] Login successful, state updated:', {
+        userId: userData.id,
+        userName: userData.name,
+        isAdmin,
+        isAuthenticated: true
+      });
+
       toast.success('Đăng nhập thành công!');
 
       return { userData, isAdmin: userData.role === 'ADMIN' };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[AuthProvider] Login error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       const message = error.response?.data?.message || error.message || 'Đăng nhập thất bại';
       toast.error(message);
       throw error;

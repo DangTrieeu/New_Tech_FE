@@ -20,7 +20,18 @@ import ImageGridViewer from '@/components/molecules/ImageGridViewer/ImageGridVie
 
 const ChatPage = () => {
   const { user, logout } = useAuth();
-  const { socket, connected, sendMessage } = useSocket();
+  const { socket, connected, sendMessage, joinRoom } = useSocket();
+
+  // Debug socket state on mount and when it changes
+  useEffect(() => {
+    console.log('[ChatPage] Component mounted/updated - Socket state:', {
+      socketExists: !!socket,
+      connected,
+      userExists: !!user,
+      userId: user?.id,
+      userName: user?.name
+    });
+  }, [socket, connected, user]);
 
   // States
   const [rooms, setRooms] = useState([]);
@@ -129,14 +140,13 @@ const ChatPage = () => {
   useEffect(() => {
     if (selectedRoom) {
       loadMessages(selectedRoom.id);
-      if (socket) {
-        socket.emit('join_room', { roomId: selectedRoom.id });
-      } else {
-        console.error('[ChatPage] Cannot join room - socket not available');
+      // Use joinRoom function from SocketContext instead of direct socket.emit
+      if (connected && joinRoom) {
+        joinRoom(selectedRoom.id);
       }
       setShowRoomInfo(false);
     }
-  }, [selectedRoom, socket]);
+  }, [selectedRoom, connected, joinRoom]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -186,12 +196,27 @@ const ChatPage = () => {
       status: 'sending',
     };
 
+    console.log('[ChatPage] Attempting to send message:', {
+      messageData,
+      socketExists: !!socket,
+      socketConnected: socket?.connected,
+      connected,
+      roomId: selectedRoom.id,
+      userId: user?.id
+    });
+
     setMessages((prev) => [...prev, tempMessage]);
     setMessageInput('');
 
     if (socket && socket.connected) {
+      console.log('[ChatPage] Socket is connected, sending message...');
       sendMessage(messageData);
     } else {
+      console.error('[ChatPage] Cannot send message - Socket state:', {
+        socketExists: !!socket,
+        socketConnected: socket?.connected,
+        connectedState: connected
+      });
       toast.error('Không thể gửi tin nhắn. Vui lòng kiểm tra kết nối.');
       setMessages((prev) => prev.filter(msg => msg.id !== tempMessage.id));
     }
@@ -314,14 +339,13 @@ const ChatPage = () => {
   useEffect(() => {
     if (selectedRoom) {
       loadMessages(selectedRoom.id);
-      if (socket) {
-        socket.emit('join_room', { roomId: selectedRoom.id });
-      } else {
-        console.error('[ChatPage] Cannot join room - socket not available');
+      // Use joinRoom function from SocketContext instead of direct socket.emit
+      if (connected && joinRoom) {
+        joinRoom(selectedRoom.id);
       }
       setShowRoomInfo(false);
     }
-  }, [selectedRoom, socket]);
+  }, [selectedRoom, connected, joinRoom]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

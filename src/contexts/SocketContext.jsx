@@ -16,36 +16,70 @@ export const useSocket = () => {
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const socketRef = useRef(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    const token = localStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken');
+
+    console.log('[SocketContext] Auth state or token changed:', {
+      isAuthenticated,
+      hasToken: !!token,
+      userExists: !!user,
+      userName: user?.name,
+      userRole: user?.role
+    });
+
+    if (isAuthenticated && token) {
       connectSocket();
     } else {
+      console.log('[SocketContext] Not connecting - no auth or token');
       disconnectSocket();
     }
 
     return () => {
       disconnectSocket();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   const connectSocket = () => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken');
 
-    if (!token || socketRef.current) return;
+    console.log('[SocketContext] Attempting to connect socket:', {
+      hasToken: !!token,
+      socketExists: !!socketRef.current,
+      socketAlreadyConnected: socketRef.current?.connected,
+      token: token ? `${token.substring(0, 20)}...` : 'null'
+    });
 
+    if (!token) {
+      console.error('[SocketContext] Cannot connect - no token found');
+      return;
+    }
+
+    if (socketRef.current) {
+      if (socketRef.current.connected) {
+        console.log('[SocketContext] Socket already connected, skipping');
+        return;
+      } else {
+        console.log('[SocketContext] Socket exists but not connected, cleaning up...');
+        disconnectSocket();
+      }
+    }
+
+    console.log('[SocketContext] Creating new socket connection...');
     const newSocket = io(API_BASE_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
     });
 
     newSocket.on('connect', () => {
+      console.log('[SocketContext] ✅ Socket connected successfully, ID:', newSocket.id);
       setConnected(true);
     });
 
     newSocket.on('disconnect', () => {
+      console.log('[SocketContext] ❌ Socket disconnected');
       setConnected(false);
     });
 
@@ -56,10 +90,12 @@ export const SocketProvider = ({ children }) => {
 
     socketRef.current = newSocket;
     setSocket(newSocket);
+    console.log('[SocketContext] Socket instance created and stored in refs');
   };
 
   const disconnectSocket = () => {
     if (socketRef.current) {
+      console.log('[SocketContext] Disconnecting socket...');
       socketRef.current.disconnect();
       socketRef.current = null;
       setSocket(null);
@@ -69,9 +105,15 @@ export const SocketProvider = ({ children }) => {
 
   // Join room
   const joinRoom = (roomId) => {
+    console.log('[SocketContext] joinRoom called:', {
+      roomId,
+      socketExists: !!socket,
+      socketConnected: socket?.connected
+    });
+
     if (socket && socket.connected) {
-      // Emit as object for consistency with send_message
       socket.emit('join_room', { roomId });
+      console.log('[SocketContext] Emitted join_room event');
     } else {
       console.error('[SocketContext] Cannot join room - socket not connected');
     }
@@ -87,8 +129,15 @@ export const SocketProvider = ({ children }) => {
 
   // Send message
   const sendMessage = (data) => {
+    console.log('[SocketContext] sendMessage called:', {
+      data,
+      socketExists: !!socket,
+      socketConnected: socket?.connected
+    });
+
     if (socket && socket.connected) {
       socket.emit('send_message', data);
+      console.log('[SocketContext] Emitted send_message event');
     } else {
       console.error('[SocketContext] Cannot send message - socket not connected:', {
         socketExists: !!socket,
