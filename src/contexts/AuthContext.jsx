@@ -16,10 +16,25 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [initialized, setInitialized] = useState(false); // Track if checkAuth đã chạy
+  const [initialized, setInitialized] = useState(false);
   const navigate = useNavigate();
+
+  // Listen for auto-logout event from axios interceptor
+  useEffect(() => {
+    const handleAutoLogout = () => {
+      setUser(null);
+      setAccessToken(null);
+      setIsAuthenticated(false);
+      toast.error('Phiên đăng nhập đã hết hạn');
+      navigate('/login', { replace: true });
+    };
+
+    window.addEventListener('auth:logout', handleAutoLogout);
+    return () => window.removeEventListener('auth:logout', handleAutoLogout);
+  }, [navigate]);
 
   // Kiểm tra token khi app khởi động - CHỈ CHẠY 1 LẦN
   useEffect(() => {
@@ -31,33 +46,69 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     const token = localStorage.getItem('accessToken');
 
+    // Nếu không có token, không gọi API
     if (!token) {
       setLoading(false);
       setInitialized(true);
+      setIsAuthenticated(false);
       return;
     }
 
     try {
       // Lấy thông tin user từ API
       const response = await userService.getProfile();
-      setUser(response.data || response.user);
+      const userData = response.data || response.user;
+      setUser(userData);
+      setAccessToken(token);
       setIsAuthenticated(true);
     } catch (error) {
-      console.error('Auth check failed:', error);
-      localStorage.clear();
+      // Xử lý lỗi xác thực một cách yên lặng
+      if (error.response?.status === 401) {
+        console.log('Token expired or invalid, clearing auth...');
+      } else {
+        console.error('Auth check failed:', error);
+      }
+      // Clear tất cả thông tin xác thực
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       setIsAuthenticated(false);
       setUser(null);
+      setAccessToken(null);
     } finally {
       setLoading(false);
       setInitialized(true);
     }
   };
 
-  // Đăng nhập (support cả USER và ADMIN)
+  // Làm mới access token (được gọi từ axios interceptor hoặc manual)
+  const refreshAccessToken = async () => {
+    try {
+      const response = await authService.refreshToken();
+      const newToken = response.data?.accessToken || response.accessToken;
+
+      if (newToken) {
+        localStorage.setItem('accessToken', newToken);
+        setAccessToken(newToken);
+        return newToken;
+      }
+
+      throw new Error('No access token in refresh response');
+    } catch (error) {
+      console.error('Refresh token failed:', error);
+      // Clear auth state
+      localStorage.clear();
+      setUser(null);
+      setAccessToken(null);
+      setIsAuthenticated(false);
+      throw error;
+    }
+  };
+
+  // Đăng nhập
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);
-      
+
       console.log('AuthContext - Full response:', response);
 
       // authService.login return response.data = { status: 200, message: "...", data: {...} }
@@ -91,6 +142,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       setUser(userData);
+      setAccessToken(responseData.accessToken);
       setIsAuthenticated(true);
       setLoading(false);
 
@@ -101,6 +153,38 @@ export const AuthProvider = ({ children }) => {
       console.error('Login error:', error);
       const message = error.response?.data?.message || error.message || 'Đăng nhập thất bại';
       toast.error(message);
+      throw error;
+    }
+  };
+
+  // Google OAuth Login
+  const loginWithGoogle = () => {
+    authService.initiateGoogleLogin();
+  };
+
+  // Handle Google OAuth Success (called from OAuthSuccessPage)
+  const handleGoogleAuthSuccess = async (accessTokenFromCookie) => {
+    try {
+      // Store access token
+      if (accessTokenFromCookie) {
+        localStorage.setItem('accessToken', accessTokenFromCookie);
+        setAccessToken(accessTokenFromCookie);
+      }
+
+      // Get user profile
+      const response = await userService.getProfile();
+      const userData = response.data || response.user;
+
+      setUser(userData);
+      setIsAuthenticated(true);
+      setLoading(false);
+
+      toast.success('Đăng nhập Google thành công!');
+      return userData;
+    } catch (error) {
+      console.error('Google auth failed:', error);
+      localStorage.clear();
+      toast.error('Xác thực Google thất bại');
       throw error;
     }
   };
@@ -129,6 +213,7 @@ export const AuthProvider = ({ children }) => {
       // Xóa tokens và user state
       localStorage.clear();
       setUser(null);
+      setAccessToken(null);
       setIsAuthenticated(false);
       toast.success('Đã đăng xuất');
       navigate('/login');
@@ -164,14 +249,18 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    accessToken,
     loading,
     isAuthenticated,
     login,
+    loginWithGoogle,
+    handleGoogleAuthSuccess,
     register,
     logout,
     updateUserProfile,
     changePassword,
     checkAuth,
+    refreshAccessToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

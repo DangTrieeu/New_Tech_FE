@@ -6,7 +6,7 @@ import logo from '@/assets/logo.png';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, loading: authLoading } = useAuth();
+  const { login, loginWithGoogle, isAuthenticated, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,6 +36,10 @@ const LoginPage = () => {
     }
   };
 
+  const handleGoogleLogin = () => {
+    loginWithGoogle();
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background-color)' }}>
       <div className="w-full max-w-md p-8 rounded-2xl" style={{ backgroundColor: 'var(--surface-color)' }}>
@@ -51,6 +55,7 @@ const LoginPage = () => {
           onPasswordChange={(e) => setPassword(e.target.value)}
           onSubmit={handleSubmit}
           onNavigateToRegister={() => navigate('/register')}
+          onGoogleLogin={handleGoogleLogin}
           loading={loading}
         />
       </div>

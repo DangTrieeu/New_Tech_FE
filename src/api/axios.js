@@ -8,7 +8,23 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important: Enable sending cookies with requests
 });
+
+// Flag để tránh gọi refresh nhiều lần
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
 
 // Request interceptor: Thêm token vào header
 axiosInstance.interceptors.request.use(
@@ -32,35 +48,57 @@ axiosInstance.interceptors.response.use(
 
     // Nếu lỗi 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // Đang refresh, thêm request vào queue
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return axiosInstance(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-
-        if (!refreshToken) {
-          // Không có refresh token, redirect về login
-          localStorage.clear();
-          window.location.href = '/login';
-          return Promise.reject(error);
-        }
-
-        // Gọi API refresh token
+        // Gọi API refresh token - cookies tự động được gửi
         const { data } = await axios.post(
-          `${API_BASE_URL}/auth/refresh-token`,
-          { refreshToken }
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
         );
 
+        const newAccessToken = data.data?.accessToken || data.accessToken;
+
+        if (!newAccessToken) {
+          throw new Error('No access token in refresh response');
+        }
+
         // Lưu access token mới
-        localStorage.setItem('accessToken', data.accessToken);
+        localStorage.setItem('accessToken', newAccessToken);
+
+        // Process queued requests
+        processQueue(null, newAccessToken);
 
         // Retry request gốc với token mới
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         // Refresh token thất bại, đăng xuất
+        processQueue(refreshError, null);
         localStorage.clear();
-        window.location.href = '/login';
+
+        // Dispatch custom event để AuthContext có thể xử lý
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import FormField from '../../molecules/FormField/FormField';
 import Button from '../../atoms/Button/Button';
+import GoogleLoginButton from '../../atoms/Button/GoogleLoginButton';
 
 const LoginForm = ({ 
   email,
@@ -8,7 +9,9 @@ const LoginForm = ({
   onEmailChange,
   onPasswordChange,
   onSubmit,
-  onNavigateToRegister
+  onNavigateToRegister,
+  onGoogleLogin,
+  loading
 }) => {
   return (
     <form onSubmit={onSubmit}>
@@ -37,11 +40,27 @@ const LoginForm = ({
         variant="primary"
         fullWidth
         className="mb-4"
+        disabled={loading}
       >
-        Đăng nhập
+        {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
       </Button>
 
-      <p className="text-center" style={{ color: 'var(--text-secondary)' }}>
+      {/* Divider */}
+      <div className="relative mb-4">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t" style={{ borderColor: 'var(--border-color)' }}></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-2" style={{ backgroundColor: 'var(--surface-color)', color: 'var(--text-secondary)' }}>
+            Hoặc
+          </span>
+        </div>
+      </div>
+
+      {/* Google Login Button */}
+      <GoogleLoginButton onClick={onGoogleLogin} disabled={loading} />
+
+      <p className="text-center mt-4" style={{ color: 'var(--text-secondary)' }}>
         Chưa có tài khoản?{' '}
         <button
           type="button"
