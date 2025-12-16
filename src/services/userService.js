@@ -28,9 +28,9 @@ export const changePassword = async (oldPassword, newPassword) => {
 };
 
 // Tìm kiếm user
-export const searchUsers = async (query) => {
+export const searchUsers = async (query, limit = 10) => {
   const response = await axiosInstance.get(API_ENDPOINTS.SEARCH_USERS, {
-    params: { q: query },
+    params: { q: query, limit },
   });
   return response.data;
 };
@@ -40,4 +40,3 @@ export const getUserById = async (userId) => {
   const response = await axiosInstance.get(API_ENDPOINTS.USER_BY_ID(userId));
   return response.data;
 };
-

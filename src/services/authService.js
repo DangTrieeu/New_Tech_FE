@@ -1,5 +1,5 @@
 import axiosInstance from '@/api/axios';
-import { API_ENDPOINTS } from '@/config/api';
+import { API_ENDPOINTS, API_BASE_URL } from '@/config/api';
 
 /**
  * Authentication Service
@@ -31,11 +31,21 @@ export const logout = async () => {
   return response.data;
 };
 
-// Làm mới token
-export const refreshToken = async (refreshToken) => {
-  const response = await axiosInstance.post(API_ENDPOINTS.REFRESH_TOKEN, {
-    refreshToken,
-  });
+// Làm mới token (cookie-based)
+export const refreshToken = async () => {
+  const response = await axiosInstance.post(API_ENDPOINTS.REFRESH_TOKEN);
   return response.data;
 };
 
+// Google OAuth - Redirect to Google
+export const initiateGoogleLogin = () => {
+  window.location.href = `${API_BASE_URL}${API_ENDPOINTS.GOOGLE_AUTH}`;
+};
+
+// Verify Google OAuth callback
+export const verifyGoogleAuth = async () => {
+  // After OAuth callback, backend sets cookies and redirects to /oauth-success
+  // This function is called from OAuthSuccessPage to get user data
+  const response = await axiosInstance.get(API_ENDPOINTS.PROFILE);
+  return response.data;
+};

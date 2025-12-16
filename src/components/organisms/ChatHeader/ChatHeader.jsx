@@ -1,8 +1,8 @@
 import React from 'react';
-import { Users, Phone, Video, Info } from 'lucide-react';
+import { Users, Phone, Video, Info, Sparkles } from 'lucide-react';
 import { getRoomDisplayName } from '@/utils/dateUtils';
 
-const ChatHeader = ({ room, currentUserId, onToggleInfo }) => {
+const ChatHeader = ({ room, currentUserId, onToggleInfo, onSummarize }) => {
   if (!room) return null;
 
   const partner = room.type === 'PRIVATE' && room.participants?.[0];
@@ -32,6 +32,16 @@ const ChatHeader = ({ room, currentUserId, onToggleInfo }) => {
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {onSummarize && (
+          <button
+            onClick={onSummarize}
+            className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500 transition-colors"
+            style={{ color: 'var(--primary-color)' }}
+            title="Tóm tắt cuộc trò chuyện"
+          >
+            <Sparkles className="w-5 h-5" />
+          </button>
+        )}
         <button className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500" style={{ color: 'var(--text-secondary)' }}>
           <Phone className="w-5 h-5" />
         </button>
@@ -51,4 +61,3 @@ const ChatHeader = ({ room, currentUserId, onToggleInfo }) => {
 };
 
 export default ChatHeader;
-

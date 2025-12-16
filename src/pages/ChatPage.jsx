@@ -4,6 +4,9 @@ import { useSocket } from '@/contexts/SocketContext';
 import * as roomService from '@/services/roomService';
 import * as messageService from '@/services/messageService';
 import * as userService from '@/services/userService';
+import { uploadFile } from '@/services/uploadService';
+import { validateFile } from '@/utils/fileValidation';
+import { chatWithAI, summarizeConversation } from '@/services/aiService';
 import toast from 'react-hot-toast';
 
 import ChatSidebar from '@/components/organisms/ChatSidebar/ChatSidebar';
@@ -12,6 +15,7 @@ import MessageList from '@/components/organisms/MessageList/MessageList';
 import MessageInput from '@/components/organisms/MessageInput/MessageInput';
 import RoomInfo from '@/components/organisms/RoomInfo/RoomInfo';
 import EmptyChatState from '@/components/organisms/EmptyChatState/EmptyChatState';
+import SummaryModal from '@/components/molecules/SummaryModal/SummaryModal';
 
 const ChatPage = () => {
   const { user, logout } = useAuth();
@@ -26,6 +30,17 @@ const ChatPage = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // File upload states
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  // AI feature states
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summary, setSummary] = useState('');
+  const [summarizing, setSummarizing] = useState(false);
+  const [aiProcessing, setAiProcessing] = useState(false);
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -131,9 +146,28 @@ const ChatPage = () => {
     e.preventDefault();
     if (!messageInput.trim() || !selectedRoom) return;
 
+    const trimmedMessage = messageInput.trim();
+
+    // Check if it's an AI command
+    if (trimmedMessage.startsWith('@AI ')) {
+      const aiQuery = trimmedMessage.substring(4).trim();
+
+      if (aiQuery.toLowerCase() === 'summarize') {
+        // Handle summarize command
+        handleSummarize();
+        setMessageInput('');
+        return;
+      }
+
+      // Handle AI chat
+      await handleAIChat(aiQuery);
+      setMessageInput('');
+      return;
+    }
+
     const messageData = {
       roomId: selectedRoom.id,
-      content: messageInput.trim(),
+      content: trimmedMessage,
       type: 'TEXT',
     };
 
@@ -157,6 +191,199 @@ const ChatPage = () => {
       toast.error('Không thể gửi tin nhắn. Vui lòng kiểm tra kết nối.');
       setMessages((prev) => prev.filter(msg => msg.id !== tempMessage.id));
     }
+  };
+
+  // Handle AI Chat
+  const handleAIChat = async (query) => {
+    if (!query || !selectedRoom) return;
+
+    try {
+      setAiProcessing(true);
+
+      // Show user's question
+      const userMessage = {
+        id: `temp-user-${Date.now()}`,
+        content: `@AI ${query}`,
+        sender_id: user?.id,
+        sender: user,
+        room_id: selectedRoom.id,
+        type: 'TEXT',
+        created_at: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+
+      // Call AI API with roomId and question (as required by backend)
+      const response = await chatWithAI(selectedRoom.id, query);
+
+      // Backend trả về: { status: 200, message: 'AI đã trả lời', data: { answer: '...', question: '...', aiMessage: {...}, fromCache: false } }
+      console.log('AI Response:', response);
+
+      const aiResponse = response.data?.answer ||
+                         response.data?.response ||
+                         response.answer ||
+                         response.response ||
+                         'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+
+      // Show AI response
+      const aiMessage = {
+        id: `ai-${Date.now()}`,
+        content: aiResponse,
+        sender_id: 'ai-assistant',
+        sender: { name: 'AI Assistant', avatar_url: null },
+        room_id: selectedRoom.id,
+        type: 'TEXT',
+        created_at: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+      toast.success('AI đã trả lời!');
+    } catch (error) {
+      console.error('AI chat error:', error);
+      toast.error('Không thể nhận phản hồi từ AI');
+    } finally {
+      setAiProcessing(false);
+    }
+  };
+
+  // Handle Smart Reply Selection
+  const handleSelectSmartReply = (reply) => {
+    setMessageInput(reply);
+  };
+
+  // Handle Summarize
+  const handleSummarize = async () => {
+    if (!selectedRoom) return;
+
+    try {
+      setSummarizing(true);
+      setShowSummaryModal(true);
+      setSummary('');
+
+      const response = await summarizeConversation(selectedRoom.id, 50);
+      const summaryText = response.data?.summary || response.summary || 'Không thể tạo tóm tắt.';
+
+      setSummary(summaryText);
+      toast.success('Đã tạo tóm tắt thành công!');
+    } catch (error) {
+      console.error('Summarize error:', error);
+      toast.error('Không thể tạo tóm tắt cuộc trò chuyện');
+      setShowSummaryModal(false);
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
+  // Load rooms on mount
+  useEffect(() => {
+    loadRooms();
+  }, []);
+
+  // Listen for new messages
+  useEffect(() => {
+    if (!socket || !connected) return;
+
+    const handleReceiveMessage = (message) => {
+      const normalizedMessage = {
+        ...message,
+        sender_id: message.user_id || message.sender_id || message.senderId || message.userId || message.sender?.id || message.user?.id,
+        sender: message.user || message.sender,
+      };
+
+      if (selectedRoomRef.current && message.room_id === selectedRoomRef.current.id) {
+        setMessages((prev) => {
+          const withoutTemp = prev.filter(msg => !msg.id.toString().startsWith('temp-'));
+          const exists = withoutTemp.some(msg => msg.id === normalizedMessage.id);
+          if (exists) return prev;
+          return [...withoutTemp, normalizedMessage];
+        });
+      }
+
+      loadRooms();
+    };
+
+    socket.on('receive_message', handleReceiveMessage);
+    return () => socket.off('receive_message', handleReceiveMessage);
+  }, [connected, socket, user]);
+
+  // Load messages when room selected
+  useEffect(() => {
+    if (selectedRoom) {
+      loadMessages(selectedRoom.id);
+      if (socket) {
+        socket.emit('join_room', { roomId: selectedRoom.id });
+      } else {
+        console.error('[ChatPage] Cannot join room - socket not available');
+      }
+      setShowRoomInfo(false);
+    }
+  }, [selectedRoom, socket]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  // Handle file selection
+  const handleFileSelect = async (file) => {
+    if (!selectedRoom) {
+      toast.error('Vui lòng chọn cuộc trò chuyện trước');
+      return;
+    }
+
+    try {
+      // Validate file
+      validateFile(file);
+      setSelectedFile(file);
+
+      // Start upload
+      setUploading(true);
+      setUploadProgress(0);
+
+      const result = await uploadFile(file, (progress) => {
+        setUploadProgress(progress);
+      });
+
+      // Send file message
+      const messageData = {
+        roomId: selectedRoom.id,
+        content: result.url,
+        type: 'FILE',
+        metadata: {
+          filename: result.filename,
+          mimetype: result.mimetype,
+          originalName: file.name,
+        },
+      };
+
+      if (socket && socket.connected) {
+        sendMessage(messageData);
+        toast.success('Đã gửi file thành công!');
+      } else {
+        toast.error('Không thể gửi file. Vui lòng kiểm tra kết nối.');
+      }
+
+      // Reset upload state
+      setSelectedFile(null);
+      setUploading(false);
+      setUploadProgress(0);
+    } catch (error) {
+      console.error('Upload error:', error);
+      const errorMessage = error.message || 'Không thể tải file lên';
+      toast.error(errorMessage);
+      setSelectedFile(null);
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  // Cancel file upload
+  const handleCancelUpload = () => {
+    setSelectedFile(null);
+    setUploading(false);
+    setUploadProgress(0);
   };
 
   const handleSearch = async (query) => {
@@ -215,6 +442,7 @@ const ChatPage = () => {
               room={selectedRoom}
               currentUserId={user?.id}
               onToggleInfo={() => setShowRoomInfo(!showRoomInfo)}
+              onSummarize={handleSummarize}
             />
 
             <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--background-color)' }}>
@@ -223,14 +451,27 @@ const ChatPage = () => {
                 currentUserId={user?.id}
                 loading={loading}
                 messagesEndRef={messagesEndRef}
+                onSelectSmartReply={handleSelectSmartReply}
               />
+              {aiProcessing && (
+                <div className="flex items-center gap-2 text-sm p-3 rounded-lg mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: 'var(--primary-color)' }}></div>
+                  <span>AI đang suy nghĩ...</span>
+                </div>
+              )}
             </div>
 
             <MessageInput
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               onSubmit={handleSendMessage}
-              disabled={!messageInput.trim()}
+              disabled={!messageInput.trim() || aiProcessing}
+              onFileSelect={handleFileSelect}
+              uploading={uploading}
+              uploadProgress={uploadProgress}
+              selectedFile={selectedFile}
+              onCancelUpload={handleCancelUpload}
+              placeholder={aiProcessing ? "AI đang xử lý..." : "Nhập tin nhắn... (gõ @AI để chat với AI)"}
             />
           </>
         ) : (
@@ -242,9 +483,16 @@ const ChatPage = () => {
       {showRoomInfo && selectedRoom && (
         <RoomInfo room={selectedRoom} currentUserId={user?.id} />
       )}
+
+      {/* Summary Modal */}
+      <SummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        summary={summary}
+        loading={summarizing}
+      />
     </div>
   );
 };
 
 export default ChatPage;
-

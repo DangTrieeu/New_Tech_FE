@@ -12,6 +12,8 @@ import ProfilePage from './pages/ProfilePage';
 import ContactsPage from './pages/ContactsPage';
 import AboutPage from './pages/AboutPage';
 import WelcomePage from './pages/WelcomePage';
+import OAuthSuccessPage from './pages/OAuthSuccessPage';
+import DemoPage from './pages/DemoPage';
 
 function App() {
   return (
@@ -46,6 +48,15 @@ function App() {
               <Route path="/" element={<WelcomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/oauth-success" element={<OAuthSuccessPage />} />
+              <Route
+                path="/demo"
+                element={
+                  <ProtectedRoute>
+                    <DemoPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Protected Routes */}
               <Route
