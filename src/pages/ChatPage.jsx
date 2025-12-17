@@ -16,10 +16,22 @@ import MessageInput from '@/components/organisms/MessageInput/MessageInput';
 import RoomInfo from '@/components/organisms/RoomInfo/RoomInfo';
 import EmptyChatState from '@/components/organisms/EmptyChatState/EmptyChatState';
 import SummaryModal from '@/components/molecules/SummaryModal/SummaryModal';
+import ImageGridViewer from '@/components/molecules/ImageGridViewer/ImageGridViewer';
 
 const ChatPage = () => {
   const { user, logout } = useAuth();
-  const { socket, connected, sendMessage } = useSocket();
+  const { socket, connected, sendMessage, joinRoom } = useSocket();
+
+  // Debug socket state on mount and when it changes
+  useEffect(() => {
+    console.log('[ChatPage] Component mounted/updated - Socket state:', {
+      socketExists: !!socket,
+      connected,
+      userExists: !!user,
+      userId: user?.id,
+      userName: user?.name
+    });
+  }, [socket, connected, user]);
 
   // States
   const [rooms, setRooms] = useState([]);
@@ -41,6 +53,9 @@ const ChatPage = () => {
   const [summary, setSummary] = useState('');
   const [summarizing, setSummarizing] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false);
+
+  // Image gallery state
+  const [showImageGallery, setShowImageGallery] = useState(false);
 
   // Refs
   const messagesEndRef = useRef(null);
@@ -125,14 +140,13 @@ const ChatPage = () => {
   useEffect(() => {
     if (selectedRoom) {
       loadMessages(selectedRoom.id);
-      if (socket) {
-        socket.emit('join_room', { roomId: selectedRoom.id });
-      } else {
-        console.error('[ChatPage] Cannot join room - socket not available');
+      // Use joinRoom function from SocketContext instead of direct socket.emit
+      if (connected && joinRoom) {
+        joinRoom(selectedRoom.id);
       }
       setShowRoomInfo(false);
     }
-  }, [selectedRoom, socket]);
+  }, [selectedRoom, connected, joinRoom]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -182,12 +196,27 @@ const ChatPage = () => {
       status: 'sending',
     };
 
+    console.log('[ChatPage] Attempting to send message:', {
+      messageData,
+      socketExists: !!socket,
+      socketConnected: socket?.connected,
+      connected,
+      roomId: selectedRoom.id,
+      userId: user?.id
+    });
+
     setMessages((prev) => [...prev, tempMessage]);
     setMessageInput('');
 
     if (socket && socket.connected) {
+      console.log('[ChatPage] Socket is connected, sending message...');
       sendMessage(messageData);
     } else {
+      console.error('[ChatPage] Cannot send message - Socket state:', {
+        socketExists: !!socket,
+        socketConnected: socket?.connected,
+        connectedState: connected
+      });
       toast.error('Không thể gửi tin nhắn. Vui lòng kiểm tra kết nối.');
       setMessages((prev) => prev.filter(msg => msg.id !== tempMessage.id));
     }
@@ -310,14 +339,13 @@ const ChatPage = () => {
   useEffect(() => {
     if (selectedRoom) {
       loadMessages(selectedRoom.id);
-      if (socket) {
-        socket.emit('join_room', { roomId: selectedRoom.id });
-      } else {
-        console.error('[ChatPage] Cannot join room - socket not available');
+      // Use joinRoom function from SocketContext instead of direct socket.emit
+      if (connected && joinRoom) {
+        joinRoom(selectedRoom.id);
       }
       setShowRoomInfo(false);
     }
-  }, [selectedRoom, socket]);
+  }, [selectedRoom, connected, joinRoom]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -415,8 +443,31 @@ const ChatPage = () => {
     }
   };
 
+  const handleGroupCreated = async (newRoom) => {
+    try {
+      // Reload rooms to include the new group
+      await loadRooms();
+      // Select the new room
+      setSelectedRoom(newRoom);
+      toast.success('Đã tạo nhóm thành công!');
+    } catch (error) {
+      console.error('Handle group created failed:', error);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleImageClick = (imageIndex) => {
+    setShowImageGallery(true);
+    // Set initial index for gallery - will be handled by ImageGallery component
+    // We'll need to pass this to ImageGridViewer
+    setTimeout(() => {
+      // Trigger gallery to open at specific index
+      const event = new CustomEvent('openGalleryAtIndex', { detail: { index: imageIndex } });
+      window.dispatchEvent(event);
+    }, 100);
   };
 
   return (
@@ -431,6 +482,7 @@ const ChatPage = () => {
         onSearchChange={handleSearch}
         searchResults={searchResults}
         onCreatePrivateChat={handleCreatePrivateChat}
+        onGroupCreated={handleGroupCreated}
         onLogout={handleLogout}
       />
 
@@ -443,6 +495,7 @@ const ChatPage = () => {
               currentUserId={user?.id}
               onToggleInfo={() => setShowRoomInfo(!showRoomInfo)}
               onSummarize={handleSummarize}
+              onShowImageGallery={() => setShowImageGallery(true)}
             />
 
             <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--background-color)' }}>
@@ -452,6 +505,7 @@ const ChatPage = () => {
                 loading={loading}
                 messagesEndRef={messagesEndRef}
                 onSelectSmartReply={handleSelectSmartReply}
+                onImageClick={handleImageClick}
               />
               {aiProcessing && (
                 <div className="flex items-center gap-2 text-sm p-3 rounded-lg mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -490,6 +544,13 @@ const ChatPage = () => {
         onClose={() => setShowSummaryModal(false)}
         summary={summary}
         loading={summarizing}
+      />
+
+      {/* Image Grid Viewer */}
+      <ImageGridViewer
+        messages={messages}
+        isOpen={showImageGallery}
+        onClose={() => setShowImageGallery(false)}
       />
     </div>
   );

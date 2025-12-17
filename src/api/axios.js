@@ -29,7 +29,8 @@ const processQueue = (error, token = null) => {
 // Request interceptor: Thêm token vào header
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
+    // Kiểm tra cả admin token và user token
+    const token = localStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -45,6 +46,14 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // Không retry cho các auth endpoints (login, register, refresh)
+    const authEndpoints = ['/auth', '/users/register', '/auth/refresh', '/auth/logout'];
+    const isAuthEndpoint = authEndpoints.some(endpoint => originalRequest.url?.includes(endpoint));
+
+    if (isAuthEndpoint) {
+      return Promise.reject(error);
+    }
 
     // Nếu lỗi 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -79,8 +88,13 @@ axiosInstance.interceptors.response.use(
           throw new Error('No access token in refresh response');
         }
 
-        // Lưu access token mới
-        localStorage.setItem('accessToken', newAccessToken);
+        // Lưu access token mới - check xem đang dùng admin hay user token
+        const isAdmin = localStorage.getItem('adminAccessToken');
+        if (isAdmin) {
+          localStorage.setItem('adminAccessToken', newAccessToken);
+        } else {
+          localStorage.setItem('accessToken', newAccessToken);
+        }
 
         // Process queued requests
         processQueue(null, newAccessToken);
