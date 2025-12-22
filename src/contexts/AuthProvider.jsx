@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, startTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import * as authService from "@/services/authService";
 import * as userService from "@/services/userService";
@@ -247,12 +247,15 @@ export const AuthProvider = ({ children }) => {
       });
 
       // Tokens đã được lưu vào localStorage ở OAuthSuccessPage
-      // Batch all state updates together to avoid React error #185
-      setLoading(false);
-      setInitialized(true);
-      setAccessToken(accessToken);
-      setIsAuthenticated(true);
-      setUser(userData); // Set user LAST to ensure other states are ready
+      // Use startTransition to mark these updates as non-urgent
+      // This prevents React error #185 by allowing other renders to complete first
+      startTransition(() => {
+        setLoading(false);
+        setInitialized(true);
+        setAccessToken(accessToken);
+        setIsAuthenticated(true);
+        setUser(userData); // Set user LAST to ensure other states are ready
+      });
 
       console.log("[AuthProvider] User authenticated via Google OAuth:", {
         userId: userData.id,
