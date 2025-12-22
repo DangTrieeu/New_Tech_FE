@@ -19,35 +19,45 @@ const OAuthSuccessPage = () => {
         // Đợi một chút để đảm bảo cookies đã được set
         await new Promise((resolve) => setTimeout(resolve, 100));
 
+        // Debug: Log tất cả cookies
+        console.log("[OAuthSuccess] All cookies:", document.cookie);
+
         // Đọc accessToken từ cookie (backend đã set cookie, không httpOnly)
         const accessToken = getCookie("accessToken");
-        const refreshToken = getCookie("refreshToken");
+        // refreshToken là httpOnly nên không đọc được từ JavaScript
 
         console.log("[OAuthSuccess] Cookies:", {
           hasAccessToken: !!accessToken,
-          hasRefreshToken: !!refreshToken,
+          accessTokenValue: accessToken
+            ? accessToken.substring(0, 20) + "..."
+            : "none",
+          allCookies: document.cookie,
         });
 
         if (!accessToken) {
+          console.error("[OAuthSuccess] No accessToken found in cookies!");
           throw new Error("Không tìm thấy access token trong cookies");
         }
 
-        // Lưu tokens vào localStorage để dễ quản lý
+        // Lưu accessToken vào localStorage
         localStorage.setItem("accessToken", accessToken);
-        if (refreshToken) {
-          localStorage.setItem("refreshToken", refreshToken);
-        }
+        // Không lưu refreshToken vào localStorage vì nó là httpOnly cookie
+
+        console.log("[OAuthSuccess] Calling handleGoogleAuthSuccess...");
 
         // Call handleGoogleAuthSuccess - sẽ fetch user profile từ API
         await handleGoogleAuthSuccess(accessToken);
+
+        console.log("[OAuthSuccess] Success! Redirecting to chat...");
 
         // Redirect to chat page
         setTimeout(() => {
           navigate("/chat", { replace: true });
         }, 500);
       } catch (err) {
-        console.error("OAuth callback error:", err);
-        setError("Xác thực thất bại. Vui lòng thử lại.");
+        console.error("[OAuthSuccess] OAuth callback error:", err);
+        console.error("[OAuthSuccess] Error stack:", err.stack);
+        setError(`Xác thực thất bại: ${err.message}`);
 
         // Redirect to login after error
         setTimeout(() => {
