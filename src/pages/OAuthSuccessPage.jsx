@@ -1,52 +1,56 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCookie } from "@/utils/cookies";
 
 /**
  * OAuth Success Page
  * Handles the callback after Google OAuth authentication
- * Backend redirects here after setting cookies
+ * Backend redirects here with tokens in URL params
  */
 const OAuthSuccessPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { handleGoogleAuthSuccess } = useAuth();
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const processOAuthCallback = async () => {
       try {
-        // Đợi một chút để đảm bảo cookies đã được set
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // Đọc tokens từ URL params
+        const accessToken = searchParams.get("accessToken");
+        const refreshToken = searchParams.get("refreshToken");
+        const userStr = searchParams.get("user");
 
-        // Debug: Log tất cả cookies
-        console.log("[OAuthSuccess] All cookies:", document.cookie);
-
-        // Đọc accessToken từ cookie (backend đã set cookie, không httpOnly)
-        const accessToken = getCookie("accessToken");
-        // refreshToken là httpOnly nên không đọc được từ JavaScript
-
-        console.log("[OAuthSuccess] Cookies:", {
+        console.log("[OAuthSuccess] URL Params:", {
           hasAccessToken: !!accessToken,
-          accessTokenValue: accessToken
-            ? accessToken.substring(0, 20) + "..."
-            : "none",
-          allCookies: document.cookie,
+          hasRefreshToken: !!refreshToken,
+          hasUser: !!userStr,
         });
 
         if (!accessToken) {
-          console.error("[OAuthSuccess] No accessToken found in cookies!");
-          throw new Error("Không tìm thấy access token trong cookies");
+          throw new Error("Không tìm thấy access token trong URL");
         }
 
-        // Lưu accessToken vào localStorage
+        // Parse user data
+        let userData = null;
+        if (userStr) {
+          try {
+            userData = JSON.parse(decodeURIComponent(userStr));
+          } catch (e) {
+            console.warn("Failed to parse user data:", e);
+          }
+        }
+
+        // Lưu tokens vào localStorage
         localStorage.setItem("accessToken", accessToken);
-        // Không lưu refreshToken vào localStorage vì nó là httpOnly cookie
+        if (refreshToken) {
+          localStorage.setItem("refreshToken", refreshToken);
+        }
 
         console.log("[OAuthSuccess] Calling handleGoogleAuthSuccess...");
 
-        // Call handleGoogleAuthSuccess - sẽ fetch user profile từ API
-        await handleGoogleAuthSuccess(accessToken);
+        // Call handleGoogleAuthSuccess với user data
+        await handleGoogleAuthSuccess(accessToken, userData);
 
         console.log("[OAuthSuccess] Success! Redirecting to chat...");
 
@@ -55,8 +59,7 @@ const OAuthSuccessPage = () => {
           navigate("/chat", { replace: true });
         }, 500);
       } catch (err) {
-        console.error("[OAuthSuccess] OAuth callback error:", err);
-        console.error("[OAuthSuccess] Error stack:", err.stack);
+        console.error("[OAuthSuccess] Error:", err);
         setError(`Xác thực thất bại: ${err.message}`);
 
         // Redirect to login after error
@@ -67,7 +70,7 @@ const OAuthSuccessPage = () => {
     };
 
     processOAuthCallback();
-  }, [handleGoogleAuthSuccess, navigate]);
+  }, [handleGoogleAuthSuccess, navigate, searchParams]);
 
   if (error) {
     return (

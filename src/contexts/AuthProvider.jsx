@@ -195,23 +195,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Handle Google OAuth Success (called from OAuthSuccessPage)
-  const handleGoogleAuthSuccess = async (accessTokenFromCookie) => {
+  const handleGoogleAuthSuccess = async (accessToken, userData = null) => {
     try {
       // Store access token
-      if (accessTokenFromCookie) {
-        setAccessToken(accessTokenFromCookie);
+      if (accessToken) {
+        setAccessToken(accessToken);
       }
 
-      // Get user profile từ API (cookies tự động gửi kèm request)
-      const response = await userService.getProfile();
-      const userData = response.data || response.user;
+      // Nếu đã có userData từ URL, dùng luôn. Không thì gọi API
+      let user = userData;
+      if (!user) {
+        const response = await userService.getProfile();
+        user = response.data || response.user;
+      }
 
-      setUser(userData);
+      setUser(user);
       setIsAuthenticated(true);
       setLoading(false);
 
       toast.success("Đăng nhập Google thành công!");
-      return userData;
+      return user;
     } catch (error) {
       console.error("Google auth failed:", error);
       localStorage.clear();
