@@ -35,6 +35,8 @@ export const AuthProvider = ({ children }) => {
   }, [initialized]);
 
   const checkAuth = async () => {
+    console.log("[AuthProvider] checkAuth starting...");
+
     // Kiểm tra cả admin token và user token
     const token =
       localStorage.getItem("adminAccessToken") ||
@@ -42,37 +44,78 @@ export const AuthProvider = ({ children }) => {
 
     // Nếu không có token, không gọi API
     if (!token) {
+      console.log("[AuthProvider] No token found, user not authenticated");
       setLoading(false);
       setInitialized(true);
       setIsAuthenticated(false);
       return;
     }
 
+    console.log("[AuthProvider] Token found, fetching user profile...");
+
     try {
       // Lấy thông tin user từ API
       const response = await userService.getProfile();
       const userData = response.data || response.user;
+
+      console.log("[AuthProvider] User profile loaded:", userData?.email);
+
       setUser(userData);
       setAccessToken(token);
       setIsAuthenticated(true);
     } catch (error) {
-      // Xử lý lỗi xác thực một cách yên lặng
+      console.error(
+        "[AuthProvider] Auth check failed:",
+        error.response?.status
+      );
+
+      // Nếu lỗi 401, token có thể hết hạn - thử refresh
       if (error.response?.status === 401) {
-        console.log("Token expired or invalid, clearing auth...");
+        console.log("[AuthProvider] Token expired, trying to refresh...");
+
+        try {
+          // Thử refresh token
+          const newToken = await refreshAccessToken();
+
+          if (newToken) {
+            console.log(
+              "[AuthProvider] Token refreshed, retrying getProfile..."
+            );
+            // Thử lại lấy profile với token mới
+            const response = await userService.getProfile();
+            const userData = response.data || response.user;
+
+            setUser(userData);
+            setAccessToken(newToken);
+            setIsAuthenticated(true);
+
+            console.log("[AuthProvider] Auth restored after refresh");
+          } else {
+            throw new Error("Failed to refresh token");
+          }
+        } catch (refreshError) {
+          console.error(
+            "[AuthProvider] Refresh failed, clearing auth:",
+            refreshError
+          );
+          // Refresh thất bại - clear auth
+          localStorage.clear();
+          setIsAuthenticated(false);
+          setUser(null);
+          setAccessToken(null);
+        }
       } else {
-        console.error("Auth check failed:", error);
+        // Lỗi khác - clear auth
+        console.error("[AuthProvider] Non-401 error, clearing auth");
+        localStorage.clear();
+        setIsAuthenticated(false);
+        setUser(null);
+        setAccessToken(null);
       }
-      // Clear tất cả thông tin xác thực (cả admin và user)
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("adminAccessToken");
-      localStorage.removeItem("adminRefreshToken");
-      setIsAuthenticated(false);
-      setUser(null);
-      setAccessToken(null);
     } finally {
       setLoading(false);
       setInitialized(true);
+      console.log("[AuthProvider] checkAuth completed");
     }
   };
 
@@ -200,36 +243,20 @@ export const AuthProvider = ({ children }) => {
       console.log("[AuthProvider] handleGoogleAuthSuccess called:", {
         hasAccessToken: !!accessToken,
         hasUserData: !!userData,
-        userData,
       });
 
-      // Store access token
-      if (accessToken) {
-        setAccessToken(accessToken);
-        console.log("[AuthProvider] Access token stored");
-      }
-
-      // Nếu đã có userData từ URL, dùng luôn. Không thì gọi API
-      let user = userData;
-      if (!user) {
-        console.log("[AuthProvider] No userData, fetching from API...");
-        const response = await userService.getProfile();
-        user = response.data || response.user;
-        console.log("[AuthProvider] User profile fetched:", user);
-      }
-
-      setUser(user);
+      // Tokens đã được lưu vào localStorage ở OAuthSuccessPage
+      // Chỉ cần set state
+      setAccessToken(accessToken);
+      setUser(userData);
       setIsAuthenticated(true);
       setLoading(false);
+      setInitialized(true);
 
-      console.log("[AuthProvider] User authenticated:", {
-        userId: user?.id,
-        email: user?.email,
-        isAuthenticated: true,
-      });
-
+      console.log("[AuthProvider] User authenticated via Google OAuth");
       toast.success("Đăng nhập Google thành công!");
-      return user;
+
+      return userData;
     } catch (error) {
       console.error("[AuthProvider] Google auth failed:", error);
       localStorage.clear();

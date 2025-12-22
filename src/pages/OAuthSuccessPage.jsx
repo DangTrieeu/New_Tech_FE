@@ -36,9 +36,15 @@ const OAuthSuccessPage = () => {
         if (userStr) {
           try {
             userData = JSON.parse(decodeURIComponent(userStr));
+            console.log("[OAuthSuccess] User data parsed:", userData);
           } catch (e) {
-            console.warn("Failed to parse user data:", e);
+            console.error("Failed to parse user data:", e);
+            throw new Error("Không thể parse dữ liệu người dùng");
           }
+        }
+
+        if (!userData) {
+          throw new Error("Không có thông tin người dùng từ backend");
         }
 
         // Lưu tokens vào localStorage
@@ -47,14 +53,18 @@ const OAuthSuccessPage = () => {
           localStorage.setItem("refreshToken", refreshToken);
         }
 
+        console.log("[OAuthSuccess] Tokens saved to localStorage");
         console.log("[OAuthSuccess] Calling handleGoogleAuthSuccess...");
 
         // Call handleGoogleAuthSuccess với user data
         await handleGoogleAuthSuccess(accessToken, userData);
 
-        console.log("[OAuthSuccess] Auth success! Redirecting immediately...");
+        console.log("[OAuthSuccess] Auth complete! Navigating to chat...");
 
-        // Navigate ngay lập tức - ProtectedRoute sẽ check lại auth từ localStorage
+        // Đợi một chút để state được update
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // Navigate
         navigate("/chat", { replace: true });
       } catch (err) {
         console.error("[OAuthSuccess] Error:", err);
