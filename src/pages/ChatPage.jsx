@@ -1,35 +1,49 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSocket } from '@/contexts/SocketContext';
-import * as roomService from '@/services/roomService';
-import * as messageService from '@/services/messageService';
-import * as userService from '@/services/userService';
-import { uploadFile } from '@/services/uploadService';
-import { validateFile } from '@/utils/fileValidation';
-import { chatWithAI, summarizeConversation } from '@/services/aiService';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSocket } from "@/contexts/SocketContext";
+import * as roomService from "@/services/roomService";
+import * as messageService from "@/services/messageService";
+import * as userService from "@/services/userService";
+import { uploadFile } from "@/services/uploadService";
+import { validateFile } from "@/utils/fileValidation";
+import { chatWithAI, summarizeConversation } from "@/services/aiService";
+import toast from "react-hot-toast";
 
-import ChatSidebar from '@/components/organisms/ChatSidebar/ChatSidebar';
-import ChatHeader from '@/components/organisms/ChatHeader/ChatHeader';
-import MessageList from '@/components/organisms/MessageList/MessageList';
-import MessageInput from '@/components/organisms/MessageInput/MessageInput';
-import RoomInfo from '@/components/organisms/RoomInfo/RoomInfo';
-import EmptyChatState from '@/components/organisms/EmptyChatState/EmptyChatState';
-import SummaryModal from '@/components/molecules/SummaryModal/SummaryModal';
-import ImageGridViewer from '@/components/molecules/ImageGridViewer/ImageGridViewer';
+import ChatSidebar from "@/components/organisms/ChatSidebar/ChatSidebar";
+import ChatHeader from "@/components/organisms/ChatHeader/ChatHeader";
+import MessageList from "@/components/organisms/MessageList/MessageList";
+import MessageInput from "@/components/organisms/MessageInput/MessageInput";
+import RoomInfo from "@/components/organisms/RoomInfo/RoomInfo";
+import EmptyChatState from "@/components/organisms/EmptyChatState/EmptyChatState";
+import SummaryModal from "@/components/molecules/SummaryModal/SummaryModal";
+import ImageGridViewer from "@/components/molecules/ImageGridViewer/ImageGridViewer";
 
 const ChatPage = () => {
   const { user, logout } = useAuth();
   const { socket, connected, sendMessage, joinRoom } = useSocket();
 
+  // Debug: Check if component is actually rendering
+  console.log("[ChatPage] Rendering component, user:", user?.email);
+
+  // Early return nếu không có user
+  if (!user) {
+    console.error("[ChatPage] No user found!");
+    return (
+      <div style={{ padding: "20px", color: "red" }}>
+        <h1>ERROR: No user data</h1>
+        <p>User object is missing</p>
+      </div>
+    );
+  }
+
   // Debug socket state on mount and when it changes
   useEffect(() => {
-    console.log('[ChatPage] Component mounted/updated - Socket state:', {
+    console.log("[ChatPage] Component mounted/updated - Socket state:", {
       socketExists: !!socket,
       connected,
       userExists: !!user,
       userId: user?.id,
-      userName: user?.name
+      userName: user?.name,
     });
   }, [socket, connected, user]);
 
@@ -37,8 +51,8 @@ const ChatPage = () => {
   const [rooms, setRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [messageInput, setMessageInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [messageInput, setMessageInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -50,7 +64,7 @@ const ChatPage = () => {
 
   // AI feature states
   const [showSummaryModal, setShowSummaryModal] = useState(false);
-  const [summary, setSummary] = useState('');
+  const [summary, setSummary] = useState("");
   const [summarizing, setSummarizing] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false);
 
@@ -73,7 +87,7 @@ const ChatPage = () => {
       const roomsData = response.data || response.rooms || [];
       setRooms(roomsData);
     } catch (error) {
-      console.error('Load rooms failed:', error);
+      console.error("Load rooms failed:", error);
     }
   };
 
@@ -83,7 +97,7 @@ const ChatPage = () => {
       const response = await messageService.getMessages(roomId);
       const messagesData = response.data || response.messages || [];
 
-      const normalizedMessages = messagesData.map(msg => ({
+      const normalizedMessages = messagesData.map((msg) => ({
         ...msg,
         sender_id: msg.user_id || msg.sender_id,
         sender: msg.user || msg.sender,
@@ -97,8 +111,8 @@ const ChatPage = () => {
 
       setMessages(sortedMessages);
     } catch (error) {
-      console.error('[ChatPage] Load messages failed:', error);
-      toast.error('Không thể tải tin nhắn');
+      console.error("[ChatPage] Load messages failed:", error);
+      toast.error("Không thể tải tin nhắn");
     } finally {
       setLoading(false);
     }
@@ -116,14 +130,27 @@ const ChatPage = () => {
     const handleReceiveMessage = (message) => {
       const normalizedMessage = {
         ...message,
-        sender_id: message.user_id || message.sender_id || message.senderId || message.userId || message.sender?.id || message.user?.id,
+        sender_id:
+          message.user_id ||
+          message.sender_id ||
+          message.senderId ||
+          message.userId ||
+          message.sender?.id ||
+          message.user?.id,
         sender: message.user || message.sender,
       };
 
-      if (selectedRoomRef.current && message.room_id === selectedRoomRef.current.id) {
+      if (
+        selectedRoomRef.current &&
+        message.room_id === selectedRoomRef.current.id
+      ) {
         setMessages((prev) => {
-          const withoutTemp = prev.filter(msg => !msg.id.toString().startsWith('temp-'));
-          const exists = withoutTemp.some(msg => msg.id === normalizedMessage.id);
+          const withoutTemp = prev.filter(
+            (msg) => !msg.id.toString().startsWith("temp-")
+          );
+          const exists = withoutTemp.some(
+            (msg) => msg.id === normalizedMessage.id
+          );
           if (exists) return prev;
           return [...withoutTemp, normalizedMessage];
         });
@@ -132,8 +159,8 @@ const ChatPage = () => {
       loadRooms();
     };
 
-    socket.on('receive_message', handleReceiveMessage);
-    return () => socket.off('receive_message', handleReceiveMessage);
+    socket.on("receive_message", handleReceiveMessage);
+    return () => socket.off("receive_message", handleReceiveMessage);
   }, [connected, socket, user]);
 
   // Load messages when room selected
@@ -151,7 +178,7 @@ const ChatPage = () => {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
@@ -163,26 +190,26 @@ const ChatPage = () => {
     const trimmedMessage = messageInput.trim();
 
     // Check if it's an AI command
-    if (trimmedMessage.startsWith('@AI ')) {
+    if (trimmedMessage.startsWith("@AI ")) {
       const aiQuery = trimmedMessage.substring(4).trim();
 
-      if (aiQuery.toLowerCase() === 'summarize') {
+      if (aiQuery.toLowerCase() === "summarize") {
         // Handle summarize command
         handleSummarize();
-        setMessageInput('');
+        setMessageInput("");
         return;
       }
 
       // Handle AI chat
       await handleAIChat(aiQuery);
-      setMessageInput('');
+      setMessageInput("");
       return;
     }
 
     const messageData = {
       roomId: selectedRoom.id,
       content: trimmedMessage,
-      type: 'TEXT',
+      type: "TEXT",
     };
 
     const tempMessage = {
@@ -191,34 +218,34 @@ const ChatPage = () => {
       sender_id: user?.id,
       sender: user,
       room_id: selectedRoom.id,
-      type: 'TEXT',
+      type: "TEXT",
       created_at: new Date().toISOString(),
-      status: 'sending',
+      status: "sending",
     };
 
-    console.log('[ChatPage] Attempting to send message:', {
+    console.log("[ChatPage] Attempting to send message:", {
       messageData,
       socketExists: !!socket,
       socketConnected: socket?.connected,
       connected,
       roomId: selectedRoom.id,
-      userId: user?.id
+      userId: user?.id,
     });
 
     setMessages((prev) => [...prev, tempMessage]);
-    setMessageInput('');
+    setMessageInput("");
 
     if (socket && socket.connected) {
-      console.log('[ChatPage] Socket is connected, sending message...');
+      console.log("[ChatPage] Socket is connected, sending message...");
       sendMessage(messageData);
     } else {
-      console.error('[ChatPage] Cannot send message - Socket state:', {
+      console.error("[ChatPage] Cannot send message - Socket state:", {
         socketExists: !!socket,
         socketConnected: socket?.connected,
-        connectedState: connected
+        connectedState: connected,
       });
-      toast.error('Không thể gửi tin nhắn. Vui lòng kiểm tra kết nối.');
-      setMessages((prev) => prev.filter(msg => msg.id !== tempMessage.id));
+      toast.error("Không thể gửi tin nhắn. Vui lòng kiểm tra kết nối.");
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
     }
   };
 
@@ -236,7 +263,7 @@ const ChatPage = () => {
         sender_id: user?.id,
         sender: user,
         room_id: selectedRoom.id,
-        type: 'TEXT',
+        type: "TEXT",
         created_at: new Date().toISOString(),
       };
 
@@ -246,30 +273,31 @@ const ChatPage = () => {
       const response = await chatWithAI(selectedRoom.id, query);
 
       // Backend trả về: { status: 200, message: 'AI đã trả lời', data: { answer: '...', question: '...', aiMessage: {...}, fromCache: false } }
-      console.log('AI Response:', response);
+      console.log("AI Response:", response);
 
-      const aiResponse = response.data?.answer ||
-                         response.data?.response ||
-                         response.answer ||
-                         response.response ||
-                         'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+      const aiResponse =
+        response.data?.answer ||
+        response.data?.response ||
+        response.answer ||
+        response.response ||
+        "Xin lỗi, tôi không thể trả lời câu hỏi này.";
 
       // Show AI response
       const aiMessage = {
         id: `ai-${Date.now()}`,
         content: aiResponse,
-        sender_id: 'ai-assistant',
-        sender: { name: 'AI Assistant', avatar_url: null },
+        sender_id: "ai-assistant",
+        sender: { name: "AI Assistant", avatar_url: null },
         room_id: selectedRoom.id,
-        type: 'TEXT',
+        type: "TEXT",
         created_at: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, aiMessage]);
-      toast.success('AI đã trả lời!');
+      toast.success("AI đã trả lời!");
     } catch (error) {
-      console.error('AI chat error:', error);
-      toast.error('Không thể nhận phản hồi từ AI');
+      console.error("AI chat error:", error);
+      toast.error("Không thể nhận phản hồi từ AI");
     } finally {
       setAiProcessing(false);
     }
@@ -287,16 +315,17 @@ const ChatPage = () => {
     try {
       setSummarizing(true);
       setShowSummaryModal(true);
-      setSummary('');
+      setSummary("");
 
       const response = await summarizeConversation(selectedRoom.id, 50);
-      const summaryText = response.data?.summary || response.summary || 'Không thể tạo tóm tắt.';
+      const summaryText =
+        response.data?.summary || response.summary || "Không thể tạo tóm tắt.";
 
       setSummary(summaryText);
-      toast.success('Đã tạo tóm tắt thành công!');
+      toast.success("Đã tạo tóm tắt thành công!");
     } catch (error) {
-      console.error('Summarize error:', error);
-      toast.error('Không thể tạo tóm tắt cuộc trò chuyện');
+      console.error("Summarize error:", error);
+      toast.error("Không thể tạo tóm tắt cuộc trò chuyện");
       setShowSummaryModal(false);
     } finally {
       setSummarizing(false);
@@ -315,14 +344,27 @@ const ChatPage = () => {
     const handleReceiveMessage = (message) => {
       const normalizedMessage = {
         ...message,
-        sender_id: message.user_id || message.sender_id || message.senderId || message.userId || message.sender?.id || message.user?.id,
+        sender_id:
+          message.user_id ||
+          message.sender_id ||
+          message.senderId ||
+          message.userId ||
+          message.sender?.id ||
+          message.user?.id,
         sender: message.user || message.sender,
       };
 
-      if (selectedRoomRef.current && message.room_id === selectedRoomRef.current.id) {
+      if (
+        selectedRoomRef.current &&
+        message.room_id === selectedRoomRef.current.id
+      ) {
         setMessages((prev) => {
-          const withoutTemp = prev.filter(msg => !msg.id.toString().startsWith('temp-'));
-          const exists = withoutTemp.some(msg => msg.id === normalizedMessage.id);
+          const withoutTemp = prev.filter(
+            (msg) => !msg.id.toString().startsWith("temp-")
+          );
+          const exists = withoutTemp.some(
+            (msg) => msg.id === normalizedMessage.id
+          );
           if (exists) return prev;
           return [...withoutTemp, normalizedMessage];
         });
@@ -331,8 +373,8 @@ const ChatPage = () => {
       loadRooms();
     };
 
-    socket.on('receive_message', handleReceiveMessage);
-    return () => socket.off('receive_message', handleReceiveMessage);
+    socket.on("receive_message", handleReceiveMessage);
+    return () => socket.off("receive_message", handleReceiveMessage);
   }, [connected, socket, user]);
 
   // Load messages when room selected
@@ -350,14 +392,14 @@ const ChatPage = () => {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
   // Handle file selection
   const handleFileSelect = async (file) => {
     if (!selectedRoom) {
-      toast.error('Vui lòng chọn cuộc trò chuyện trước');
+      toast.error("Vui lòng chọn cuộc trò chuyện trước");
       return;
     }
 
@@ -378,7 +420,7 @@ const ChatPage = () => {
       const messageData = {
         roomId: selectedRoom.id,
         content: result.url,
-        type: 'FILE',
+        type: "FILE",
         metadata: {
           filename: result.filename,
           mimetype: result.mimetype,
@@ -388,9 +430,9 @@ const ChatPage = () => {
 
       if (socket && socket.connected) {
         sendMessage(messageData);
-        toast.success('Đã gửi file thành công!');
+        toast.success("Đã gửi file thành công!");
       } else {
-        toast.error('Không thể gửi file. Vui lòng kiểm tra kết nối.');
+        toast.error("Không thể gửi file. Vui lòng kiểm tra kết nối.");
       }
 
       // Reset upload state
@@ -398,8 +440,8 @@ const ChatPage = () => {
       setUploading(false);
       setUploadProgress(0);
     } catch (error) {
-      console.error('Upload error:', error);
-      const errorMessage = error.message || 'Không thể tải file lên';
+      console.error("Upload error:", error);
+      const errorMessage = error.message || "Không thể tải file lên";
       toast.error(errorMessage);
       setSelectedFile(null);
       setUploading(false);
@@ -425,7 +467,7 @@ const ChatPage = () => {
       const response = await userService.searchUsers(query);
       setSearchResults(response.data || response.users || []);
     } catch (error) {
-      console.error('Search failed:', error);
+      console.error("Search failed:", error);
     }
   };
 
@@ -435,11 +477,11 @@ const ChatPage = () => {
       const room = response.data || response.room;
       setSelectedRoom(room);
       await loadRooms();
-      setSearchQuery('');
+      setSearchQuery("");
       setSearchResults([]);
     } catch (error) {
-      console.error('Create room failed:', error);
-      toast.error('Không thể tạo cuộc trò chuyện');
+      console.error("Create room failed:", error);
+      toast.error("Không thể tạo cuộc trò chuyện");
     }
   };
 
@@ -449,9 +491,9 @@ const ChatPage = () => {
       await loadRooms();
       // Select the new room
       setSelectedRoom(newRoom);
-      toast.success('Đã tạo nhóm thành công!');
+      toast.success("Đã tạo nhóm thành công!");
     } catch (error) {
-      console.error('Handle group created failed:', error);
+      console.error("Handle group created failed:", error);
     }
   };
 
@@ -465,13 +507,18 @@ const ChatPage = () => {
     // We'll need to pass this to ImageGridViewer
     setTimeout(() => {
       // Trigger gallery to open at specific index
-      const event = new CustomEvent('openGalleryAtIndex', { detail: { index: imageIndex } });
+      const event = new CustomEvent("openGalleryAtIndex", {
+        detail: { index: imageIndex },
+      });
       window.dispatchEvent(event);
     }, 100);
   };
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ backgroundColor: 'var(--background-color)' }}>
+    <div
+      className="h-screen flex overflow-hidden"
+      style={{ backgroundColor: "var(--background-color)" }}
+    >
       {/* Left Sidebar */}
       <ChatSidebar
         user={user}
@@ -498,7 +545,10 @@ const ChatPage = () => {
               onShowImageGallery={() => setShowImageGallery(true)}
             />
 
-            <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--background-color)' }}>
+            <div
+              className="flex-1 overflow-y-auto p-4"
+              style={{ backgroundColor: "var(--background-color)" }}
+            >
               <MessageList
                 messages={messages}
                 currentUserId={user?.id}
@@ -508,8 +558,14 @@ const ChatPage = () => {
                 onImageClick={handleImageClick}
               />
               {aiProcessing && (
-                <div className="flex items-center gap-2 text-sm p-3 rounded-lg mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: 'var(--primary-color)' }}></div>
+                <div
+                  className="flex items-center gap-2 text-sm p-3 rounded-lg mb-2"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <div
+                    className="animate-spin rounded-full h-4 w-4 border-b-2"
+                    style={{ borderColor: "var(--primary-color)" }}
+                  ></div>
                   <span>AI đang suy nghĩ...</span>
                 </div>
               )}
@@ -525,7 +581,11 @@ const ChatPage = () => {
               uploadProgress={uploadProgress}
               selectedFile={selectedFile}
               onCancelUpload={handleCancelUpload}
-              placeholder={aiProcessing ? "AI đang xử lý..." : "Nhập tin nhắn... (gõ @AI để chat với AI)"}
+              placeholder={
+                aiProcessing
+                  ? "AI đang xử lý..."
+                  : "Nhập tin nhắn... (gõ @AI để chat với AI)"
+              }
             />
           </>
         ) : (
