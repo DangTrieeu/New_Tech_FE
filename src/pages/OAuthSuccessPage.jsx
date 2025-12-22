@@ -52,12 +52,15 @@ const OAuthSuccessPage = () => {
         // Call handleGoogleAuthSuccess với user data
         await handleGoogleAuthSuccess(accessToken, userData);
 
-        console.log("[OAuthSuccess] Success! Redirecting to chat...");
+        console.log("[OAuthSuccess] Auth success! Waiting before redirect...");
 
-        // Redirect to chat page
-        setTimeout(() => {
-          navigate("/chat", { replace: true });
-        }, 500);
+        // Đợi 1.5s để toast hiển thị và state được cập nhật
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        console.log("[OAuthSuccess] Redirecting to chat...");
+
+        // Redirect to chat page (không dùng replace để giữ history)
+        navigate("/chat");
       } catch (err) {
         console.error("[OAuthSuccess] Error:", err);
         setError(`Xác thực thất bại: ${err.message}`);
