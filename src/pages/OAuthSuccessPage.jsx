@@ -59,10 +59,14 @@ const OAuthSuccessPage = () => {
         // Call handleGoogleAuthSuccess với user data
         await handleGoogleAuthSuccess(accessToken, userData);
 
-        console.log("[OAuthSuccess] Auth complete! Navigating to chat...");
+        console.log(
+          "[OAuthSuccess] Auth complete! Waiting for state update..."
+        );
 
-        // Đợi một chút để state được update
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Đợi đủ lâu để React flush state updates và re-render
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        console.log("[OAuthSuccess] Navigating to chat...");
 
         // Navigate
         navigate("/chat", { replace: true });
