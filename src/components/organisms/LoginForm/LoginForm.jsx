@@ -62,14 +62,15 @@ const LoginForm = ({
 
       <p className="text-center mt-4" style={{ color: 'var(--text-secondary)' }}>
         Chưa có tài khoản?{' '}
-        <button
+        <Button
+          variant="link"
           type="button"
           onClick={onNavigateToRegister}
           className="font-medium"
           style={{ color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           Đăng ký ngay
-        </button>
+        </Button>
       </p>
     </form>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Database, Trash2, RefreshCw, TrendingUp } from 'lucide-react';
 import { getCacheStats, clearCache } from '@/services/aiService';
 import toast from 'react-hot-toast';
+import Button from '../../atoms/Button/Button';
 
 const CacheManagement = () => {
   const [stats, setStats] = useState(null);

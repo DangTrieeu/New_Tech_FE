@@ -4,6 +4,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { searchUsers } from '@/services/userService';
 import { createGroupRoom } from '@/services/roomService';
 import { SEARCH_CONFIG } from '@/config/api';
+import Button from '../../atoms/Button/Button';
+import Input from '../../atoms/Input/Input';
 
 /**
  * CreateGroupModal Component
@@ -121,13 +123,14 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess, currentUserId }) => {
               Tạo nhóm mới
             </h2>
           </div>
-          <button
+          <Button
+            variant='ghost'
             onClick={handleClose}
             className="p-1 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
             style={{ color: 'var(--text-secondary)' }}
           >
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
@@ -137,17 +140,12 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess, currentUserId }) => {
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
               Tên nhóm
             </label>
-            <input
+            <Input
               type="text"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Nhập tên nhóm..."
-              className="w-full px-3 py-2 border rounded-lg outline-none transition-all"
-              style={{
-                backgroundColor: 'var(--background-secondary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)',
-              }}
+              className="w-full"
             />
           </div>
 
@@ -165,12 +163,13 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess, currentUserId }) => {
                     style={{ backgroundColor: 'var(--primary-color)', color: 'white' }}
                   >
                     <span className="text-sm">{user.name}</span>
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => handleRemoveUser(user.id)}
-                      className="ml-2 hover:opacity-80"
+                      className="ml-2 hover:opacity-80 p-0"
                     >
                       <X className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -183,23 +182,19 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess, currentUserId }) => {
               Thêm thành viên
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none z-10">
                 <Search className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
               </div>
-              <input
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm kiếm người dùng..."
-                className="w-full pl-10 pr-10 py-2.5 border rounded-lg outline-none transition-all"
-                style={{
-                  backgroundColor: 'var(--background-secondary)',
-                  borderColor: 'var(--border-color)',
-                  color: 'var(--text-primary)',
-                }}
+                className="w-full"
+                style={{ paddingLeft: '2.5rem', paddingRight: isSearching ? '2.5rem' : '1rem' }}
               />
               {isSearching && (
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none z-10">
                   <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--text-secondary)' }} />
                 </div>
               )}
@@ -211,10 +206,11 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess, currentUserId }) => {
             <div className="border rounded-lg" style={{ borderColor: 'var(--border-color)' }}>
               <div className="max-h-60 overflow-y-auto">
                 {searchResults.map(user => (
-                  <button
+                  <Button
                     key={user.id}
+                    variant="ghost"
                     onClick={() => handleSelectUser(user)}
-                    className="w-full flex items-center p-3 hover:bg-opacity-10 hover:bg-gray-500 border-b last:border-b-0"
+                    className="w-full flex items-center p-3 hover:bg-opacity-10 hover:bg-gray-500 border-b last:border-b-0 justify-start"
                     style={{ borderColor: 'var(--border-color)' }}
                   >
                     <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold mr-3">
@@ -236,7 +232,7 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess, currentUserId }) => {
                         {user.email}
                       </p>
                     </div>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -252,22 +248,22 @@ const CreateGroupModal = ({ isOpen, onClose, onSuccess, currentUserId }) => {
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
-          <button
+          <Button
+            variant="ghost"
             onClick={handleClose}
-            className="px-4 py-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
-            style={{ color: 'var(--text-secondary)' }}
+            className="px-4 py-2"
           >
             Hủy
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={handleCreateGroup}
             disabled={isCreating || !groupName.trim() || selectedUsers.length === 0}
-            className="px-4 py-2 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-            style={{ backgroundColor: 'var(--primary-color)' }}
+            className="px-4 py-2 flex items-center"
           >
             {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {isCreating ? 'Đang tạo...' : 'Tạo nhóm'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

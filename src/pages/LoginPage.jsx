@@ -22,10 +22,10 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const result = await login(email, password);
-      
+
       // Redirect based on role
       if (result.isAdmin) {
-        navigate('/admin/dashboard', { replace: true });
+        navigate('/admin', { replace: true });
       } else {
         navigate('/chat', { replace: true });
       }

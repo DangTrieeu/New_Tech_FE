@@ -41,13 +41,14 @@ const EditProfileModal = ({ onClose }) => {
           <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
             Chỉnh sửa hồ sơ
           </h2>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
             className="p-2 rounded-full hover:bg-opacity-10 hover:bg-gray-500"
             style={{ color: 'var(--text-secondary)' }}
           >
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Form */}

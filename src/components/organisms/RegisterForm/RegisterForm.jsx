@@ -67,14 +67,15 @@ const RegisterForm = ({
 
       <p className="text-center" style={{ color: 'var(--text-secondary)' }}>
         Đã có tài khoản?{' '}
-        <button
+        <Button
+          variant="link"
           type="button"
           onClick={onNavigateToLogin}
           className="font-medium"
           style={{ color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           Đăng nhập
-        </button>
+        </Button>
       </p>
     </form>
   );

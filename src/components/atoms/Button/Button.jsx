@@ -9,8 +9,25 @@ const Button = ({
     fullWidth = false,
     disabled = false,
     className = '',
-    style = {}
+    style = {},
+    useTailwind = false, // New prop to enable Tailwind mode
 }) => {
+    // If useTailwind is true, only use className and skip inline styles
+    if (useTailwind) {
+        return (
+            <button
+                type={type}
+                onClick={onClick}
+                disabled={disabled}
+                className={className}
+                style={style}
+            >
+                {children}
+            </button>
+        );
+    }
+
+    // Original inline styles mode (for backward compatibility)
     const baseStyles = {
         padding: size === 'small' ? '0.5rem 1rem' : size === 'large' ? '0.75rem 2rem' : '0.75rem 1.5rem',
         borderRadius: '0.5rem',
@@ -54,7 +71,7 @@ const Button = ({
             type={type}
             onClick={onClick}
             disabled={disabled}
-            className={`transition-opacity hover:opacity-90 ${className}`}
+            className={className}
             style={combinedStyles}
         >
             {children}

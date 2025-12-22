@@ -1,6 +1,7 @@
 import React from 'react';
-import { Users, Phone, Video, Info, Sparkles, Image } from 'lucide-react';
+import { Users, Info, Sparkles, Image } from 'lucide-react';
 import { getRoomDisplayName } from '@/utils/dateUtils';
+import Button from '../../atoms/Button/Button';
 
 const ChatHeader = ({ room, currentUserId, onToggleInfo, onSummarize, onShowImageGallery }) => {
   if (!room) return null;
@@ -33,38 +34,35 @@ const ChatHeader = ({ room, currentUserId, onToggleInfo, onSummarize, onShowImag
       </div>
       <div className="flex items-center gap-2">
         {onSummarize && (
-          <button
+          <Button
+            variant="ghost"
             onClick={onSummarize}
             className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500 transition-colors"
-            style={{ color: 'var(--primary-color)' }}
+            style={{ color: 'var(--primary-color)', padding: 5 }}
             title="Tóm tắt cuộc trò chuyện"
           >
             <Sparkles className="w-5 h-5" />
-          </button>
+          </Button>
         )}
         {onShowImageGallery && (
-          <button
+          <Button
+            variant="ghost"
             onClick={onShowImageGallery}
             className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500 transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
+            style={{ color: 'var(--text-secondary)', padding: 5 }}
             title="Xem ảnh"
           >
             <Image className="w-5 h-5" />
-          </button>
+          </Button>
         )}
-        <button className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500" style={{ color: 'var(--text-secondary)' }}>
-          <Phone className="w-5 h-5" />
-        </button>
-        <button className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500" style={{ color: 'var(--text-secondary)' }}>
-          <Video className="w-5 h-5" />
-        </button>
-        <button
+        <Button
+          variant="ghost"
           onClick={onToggleInfo}
           className="p-2 rounded-lg hover:bg-opacity-10 hover:bg-gray-500"
-          style={{ color: 'var(--text-secondary)' }}
+          style={{ color: 'var(--text-secondary)', padding: 5 }}
         >
           <Info className="w-5 h-5" />
-        </button>
+        </Button>
       </div>
     </div>
   );

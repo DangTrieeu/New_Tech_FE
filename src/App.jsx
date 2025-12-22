@@ -14,9 +14,7 @@ import AboutPage from './pages/AboutPage';
 import WelcomePage from './pages/WelcomePage';
 import OAuthSuccessPage from './pages/OAuthSuccessPage';
 import DemoPage from './pages/DemoPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import UserManagementPage from './pages/UserManagementPage';
-import RoomManagementPage from './pages/RoomManagementPage';
+import AdminLayout from './pages/AdminLayout';
 
 function App() {
   return (
@@ -95,10 +93,8 @@ function App() {
                 }
               />
 
-              {/* Admin Routes - No separate login, use /login */}
-              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-              <Route path="/admin/users" element={<UserManagementPage />} />
-              <Route path="/admin/rooms" element={<RoomManagementPage />} />
+              {/* Admin Routes - Integrated with Sidebar */}
+              <Route path="/admin/*" element={<AdminLayout />} />
 
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

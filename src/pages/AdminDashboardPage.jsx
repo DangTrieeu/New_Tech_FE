@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MessageCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Users, MessagesSquare, MessageSquare, Bot, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
 import * as adminService from '../services/adminService';
+import StatCard from '@/components/molecules/StatCard/StatCard';
 
 const AdminDashboardPage = () => {
-  const navigate = useNavigate();
   const [metrics, setMetrics] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [recentUsers, setRecentUsers] = useState([]);
-  const [recentRooms, setRecentRooms] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [systemActivities, setSystemActivities] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -25,13 +21,49 @@ const AdminDashboardPage = () => {
         adminService.getMetricsOverview(),
         adminService.getMessagesByDate(7),
         adminService.getAllUsers(),
-        adminService.getAllRooms()
+        adminService.getAllRooms(),
       ]);
 
       setMetrics(metricsRes.data);
       setChartData(messagesRes.data);
-      setRecentUsers(usersRes.data.users.slice(0, 5)); // 5 users gần nhất
-      setRecentRooms(roomsRes.data.rooms.slice(0, 5)); // 5 rooms gần nhất
+
+      // Transform real data into activity timeline
+      const activities = [];
+
+      // Add recent users (last 3)
+      const recentUsers = usersRes.data.users
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 3);
+
+      recentUsers.forEach(user => {
+        activities.push({
+          action: 'New user registered',
+          user: user.email,
+          time: formatTimeAgo(user.created_at),
+          type: 'user',
+          timestamp: new Date(user.created_at)
+        });
+      });
+
+      // Add recent rooms (last 2)
+      const recentRooms = roomsRes.data.rooms
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 2);
+
+      recentRooms.forEach(room => {
+        activities.push({
+          action: room.type === 'GROUP' ? 'Group chat created' : 'Private chat created',
+          user: room.name,
+          time: formatTimeAgo(room.created_at),
+          type: 'room',
+          timestamp: new Date(room.created_at)
+        });
+      });
+
+      // Sort activities by timestamp (most recent first)
+      activities.sort((a, b) => b.timestamp - a.timestamp);
+
+      setSystemActivities(activities.slice(0, 5));
     } catch (error) {
       toast.error('Lỗi tải dữ liệu dashboard');
       console.error(error);
@@ -40,271 +72,168 @@ const AdminDashboardPage = () => {
     }
   };
 
-  const viewUserDetail = async (userId) => {
-    try {
-      const response = await adminService.getUserById(userId);
-      setSelectedUser(response.data);
-    } catch (error) {
-      toast.error('Lỗi tải chi tiết user');
-    }
-  };
+  // Helper function to format time ago
+  const formatTimeAgo = (dateString) => {
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffMs = now - past;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  const viewRoomDetail = async (roomId) => {
-    try {
-      const response = await adminService.getRoomById(roomId);
-      setSelectedRoom(response.data);
-    } catch (error) {
-      toast.error('Lỗi tải chi tiết room');
-    }
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-xl">Đang tải...</div>
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-gray-700 rounded-full animate-spin"></div>
+          <p className="text-gray-600 font-medium">Đang tải dữ liệu...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-        <button
-          onClick={() => navigate('/chat')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-        >
-          <MessageCircle className="w-5 h-5" />
-          Về trang Chat
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Tổng Users</h3>
-          <p className="text-3xl font-bold text-blue-600">{metrics?.totalUsers || 0}</p>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Users"
+            value={(metrics?.totalUsers || 0).toLocaleString()}
+            icon={Users}
+          />
+          <StatCard
+            title="Chat Rooms"
+            value={(metrics?.totalRooms || 0).toLocaleString()}
+            icon={MessagesSquare}
+          />
+          <StatCard
+            title="Total Messages"
+            value={(metrics?.totalMessages || 0).toLocaleString()}
+            icon={MessageSquare}
+          />
+          <StatCard
+            title="AI Messages"
+            value={(metrics?.totalAIMessages || 0).toLocaleString()}
+            icon={Bot}
+          />
         </div>
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Tổng Rooms</h3>
-          <p className="text-3xl font-bold text-green-600">{metrics?.totalRooms || 0}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Tổng Messages</h3>
-          <p className="text-3xl font-bold text-purple-600">{metrics?.totalMessages || 0}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">AI Messages</h3>
-          <p className="text-3xl font-bold text-pink-600">{metrics?.totalAIMessages || 0}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Online Users</h3>
-          <p className="text-3xl font-bold text-orange-600">{metrics?.onlineUsers || 0}</p>
-        </div>
-      </div>
 
-      {/* Chart */}
-      <div className="bg-white p-6 rounded-xl shadow mb-8">
-        <h2 className="text-xl font-bold mb-4 text-gray-800">Messages theo ngày (7 ngày gần nhất)</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="count" fill="#3b82f6" name="Messages" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Most Active User */}
-      {metrics?.mostActiveUser && (
-        <div className="bg-white p-6 rounded-xl shadow mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">User hoạt động nhiều nhất</h2>
-          <div className="flex items-center gap-4">
-            <img
-              src={metrics.mostActiveUser.avatar_url || '/default-avatar.png'}
-              alt={metrics.mostActiveUser.name}
-              className="w-16 h-16 rounded-full"
-            />
-            <div>
-              <p className="font-bold text-lg">{metrics.mostActiveUser.name}</p>
-              <p className="text-gray-600">{metrics.mostActiveUser.email}</p>
-              <p className="text-sm text-blue-600 mt-1">
-                {metrics.mostActiveUser.messageCount} messages
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Recent Users & Rooms Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Users */}
-        <div className="bg-white p-6 rounded-xl shadow">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Recent Users</h2>
-            <a href="/admin/users" className="text-blue-600 hover:underline text-sm">
-              Xem tất cả →
-            </a>
-          </div>
-          <div className="space-y-3">
-            {recentUsers.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer"
-                onClick={() => viewUserDetail(user.id)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{user.name}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    user.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {user.role}
-                  </span>
-                  <p className="text-xs text-gray-500 mt-1">{user.totalMessagesSent} msgs</p>
-                </div>
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Messages Per Day Chart */}
+          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Messages Per Day</h3>
+                <p className="text-sm text-gray-500">Last 7 days activity</p>
               </div>
-            ))}
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                />
+                <YAxis
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                  labelStyle={{ color: '#111827', fontWeight: 600 }}
+                />
+                <Bar
+                  dataKey="count"
+                  fill="#3b82f6"
+                  radius={[8, 8, 0, 0]}
+                  name="Messages"
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        </div>
 
-        {/* Recent Rooms */}
-        <div className="bg-white p-6 rounded-xl shadow">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Recent Rooms</h2>
-            <a href="/admin/rooms" className="text-blue-600 hover:underline text-sm">
-              Xem tất cả →
-            </a>
-          </div>
-          <div className="space-y-3">
-            {recentRooms.map((room) => (
-              <div
-                key={room.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer"
-                onClick={() => viewRoomDetail(room.id)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                    room.type === 'GROUP' ? 'bg-purple-500' : 'bg-blue-500'
-                  }`}>
-                    {room.type === 'GROUP' ? '👥' : '💬'}
+          {/* Most Active Users */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Most Active User</h3>
+              <p className="text-sm text-gray-500">Top message sender</p>
+            </div>
+            {metrics?.mostActiveUser ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 text-white font-bold text-lg">
+                    #1
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{room.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {room.memberCount} members • {room.totalMessages} messages
+                  <img
+                    src={metrics.mostActiveUser.avatar_url || '/default-avatar.png'}
+                    alt={metrics.mostActiveUser.name}
+                    className="w-12 h-12 rounded-full border-2 border-white shadow-sm"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{metrics.mostActiveUser.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{metrics.mostActiveUser.email}</p>
+                    <p className="text-sm font-medium text-blue-600 mt-1">
+                      {metrics.mostActiveUser.messageCount} messages
                     </p>
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  room.type === 'GROUP' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {room.type}
-                </span>
+
+                {/* Online Users Info */}
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Online Users</p>
+                      <p className="text-2xl font-bold text-gray-900">{metrics.onlineUsers || 0}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">🟢</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
+            ) : (
+              <p className="text-gray-500 text-sm">No active users yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Recent System Activity */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent System Activity</h3>
+          <div className="space-y-3">
+            {systemActivities.length > 0 ? systemActivities.map((activity, index) => (
+              <div key={index} className="flex items-start gap-3 pb-3 border-b border-gray-200 last:border-0 last:pb-0">
+                <div className={`w-2 h-2 rounded-full mt-2 ${activity.type === 'user' ? 'bg-blue-500' :
+                  activity.type === 'room' ? 'bg-purple-500' :
+                    activity.type === 'message' ? 'bg-green-500' :
+                      activity.type === 'ai' ? 'bg-orange-500' :
+                        'bg-red-500'
+                  }`} />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">{activity.action}</p>
+                  <p className="text-xs text-gray-500">{activity.user}</p>
+                </div>
+                <span className="text-xs text-gray-400">{activity.time}</span>
+              </div>
+            )) : (
+              <p className="text-gray-500 text-sm text-center py-4">No recent activities</p>
+            )}
           </div>
         </div>
       </div>
-
-      {/* User Detail Modal */}
-      {selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Chi tiết User</h2>
-              <button
-                onClick={() => setSelectedUser(null)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Thông tin cơ bản</h3>
-                <p><strong>Tên:</strong> {selectedUser.user.name}</p>
-                <p><strong>Email:</strong> {selectedUser.user.email}</p>
-                <p><strong>Role:</strong> {selectedUser.user.role}</p>
-                <p><strong>Status:</strong> {selectedUser.user.status}</p>
-                <p><strong>Tổng Rooms:</strong> {selectedUser.user.totalRoomsJoined}</p>
-                <p><strong>Tổng Messages:</strong> {selectedUser.user.totalMessagesSent}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Rooms đã tham gia</h3>
-                <div className="space-y-2">
-                  {selectedUser.rooms.map((room) => (
-                    <div key={room.id} className="p-3 bg-gray-50 rounded">
-                      <p className="font-medium">{room.name}</p>
-                      <p className="text-sm text-gray-600">Type: {room.type}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Room Detail Modal */}
-      {selectedRoom && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Chi tiết Room</h2>
-              <button
-                onClick={() => setSelectedRoom(null)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Thông tin Room</h3>
-                <p><strong>Tên:</strong> {selectedRoom.room.name}</p>
-                <p><strong>Type:</strong> {selectedRoom.room.type}</p>
-                <p><strong>Created by:</strong> {selectedRoom.room.createdByName}</p>
-                <p><strong>Tổng Members:</strong> {selectedRoom.room.memberCount}</p>
-                <p><strong>Tổng Messages:</strong> {selectedRoom.room.totalMessages}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Danh sách Members</h3>
-                <div className="space-y-2">
-                  {selectedRoom.members.map((member) => (
-                    <div key={member.id} className="p-3 bg-gray-50 rounded flex items-center gap-3">
-                      <img
-                        src={member.avatar_url || '/default-avatar.png'}
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full"
-                      />
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-gray-600">{member.email}</p>
-                      </div>
-                      <span className={`ml-auto px-2 py-1 rounded text-xs font-medium ${
-                        member.status === 'ONLINE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {member.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
