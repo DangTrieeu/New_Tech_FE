@@ -161,7 +161,7 @@ const ChatPage = () => {
 
     socket.on("receive_message", handleReceiveMessage);
     return () => socket.off("receive_message", handleReceiveMessage);
-  }, [connected, socket, user]);
+  }, [connected, socket]); // Fixed: Removed 'user' to prevent infinite loop (React error #185)
 
   // Load messages when room selected
   useEffect(() => {
@@ -331,70 +331,6 @@ const ChatPage = () => {
       setSummarizing(false);
     }
   };
-
-  // Load rooms on mount
-  useEffect(() => {
-    loadRooms();
-  }, []);
-
-  // Listen for new messages
-  useEffect(() => {
-    if (!socket || !connected) return;
-
-    const handleReceiveMessage = (message) => {
-      const normalizedMessage = {
-        ...message,
-        sender_id:
-          message.user_id ||
-          message.sender_id ||
-          message.senderId ||
-          message.userId ||
-          message.sender?.id ||
-          message.user?.id,
-        sender: message.user || message.sender,
-      };
-
-      if (
-        selectedRoomRef.current &&
-        message.room_id === selectedRoomRef.current.id
-      ) {
-        setMessages((prev) => {
-          const withoutTemp = prev.filter(
-            (msg) => !msg.id.toString().startsWith("temp-")
-          );
-          const exists = withoutTemp.some(
-            (msg) => msg.id === normalizedMessage.id
-          );
-          if (exists) return prev;
-          return [...withoutTemp, normalizedMessage];
-        });
-      }
-
-      loadRooms();
-    };
-
-    socket.on("receive_message", handleReceiveMessage);
-    return () => socket.off("receive_message", handleReceiveMessage);
-  }, [connected, socket, user]);
-
-  // Load messages when room selected
-  useEffect(() => {
-    if (selectedRoom) {
-      loadMessages(selectedRoom.id);
-      // Use joinRoom function from SocketContext instead of direct socket.emit
-      if (connected && joinRoom) {
-        joinRoom(selectedRoom.id);
-      }
-      setShowRoomInfo(false);
-    }
-  }, [selectedRoom, connected, joinRoom]);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
 
   // Handle file selection
   const handleFileSelect = async (file) => {
