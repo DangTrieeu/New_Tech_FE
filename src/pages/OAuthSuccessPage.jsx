@@ -64,7 +64,8 @@ const OAuthSuccessPage = () => {
         );
 
         // Đợi đủ lâu để React flush state updates và re-render
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Tăng từ 1000ms lên 1500ms để đảm bảo state đã propagate
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         console.log("[OAuthSuccess] Navigating to chat...");
 

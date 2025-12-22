@@ -243,17 +243,22 @@ export const AuthProvider = ({ children }) => {
       console.log("[AuthProvider] handleGoogleAuthSuccess called:", {
         hasAccessToken: !!accessToken,
         hasUserData: !!userData,
+        userEmail: userData?.email,
       });
 
       // Tokens đã được lưu vào localStorage ở OAuthSuccessPage
-      // Chỉ cần set state
-      setAccessToken(accessToken);
-      setUser(userData);
-      setIsAuthenticated(true);
+      // Set state ngay lập tức
       setLoading(false);
+      setUser(userData);
+      setAccessToken(accessToken);
+      setIsAuthenticated(true);
       setInitialized(true);
 
-      console.log("[AuthProvider] User authenticated via Google OAuth");
+      console.log("[AuthProvider] User authenticated via Google OAuth:", {
+        userId: userData.id,
+        email: userData.email,
+        isAuthenticated: true,
+      });
       toast.success("Đăng nhập Google thành công!");
 
       return userData;

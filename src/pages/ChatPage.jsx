@@ -82,12 +82,20 @@ const ChatPage = () => {
 
   // Functions
   const loadRooms = async () => {
+    if (!user) {
+      console.log("[ChatPage] loadRooms: No user yet, skipping");
+      return;
+    }
+
     try {
+      console.log("[ChatPage] Loading rooms for user:", user.email);
       const response = await roomService.getRooms();
       const roomsData = response.data || response.rooms || [];
       setRooms(roomsData);
+      console.log("[ChatPage] Rooms loaded:", roomsData.length);
     } catch (error) {
       console.error("Load rooms failed:", error);
+      toast.error("Không thể tải danh sách phòng");
     }
   };
 
@@ -118,10 +126,13 @@ const ChatPage = () => {
     }
   };
 
-  // Load rooms on mount
+  // Load rooms when user is authenticated
   useEffect(() => {
-    loadRooms();
-  }, []);
+    if (user) {
+      console.log("[ChatPage] User detected, loading rooms...");
+      loadRooms();
+    }
+  }, [user]);
 
   // Listen for new messages
   useEffect(() => {
