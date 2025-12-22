@@ -72,54 +72,56 @@ const UserManagementPage = () => {
       <h1 className="text-3xl font-bold mb-8 text-gray-800">User Management</h1>
 
       <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Rooms</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Messages</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-900">{user.id}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">{user.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
-                <td className="px-6 py-4 text-sm">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${user.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${user.status === 'ONLINE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600">{user.totalRoomsJoined}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{user.totalMessagesSent}</td>
-                <td className="px-6 py-4 text-sm relative">
-                  <Button
-                    useTailwind
-                    onClick={() => toggleDropdown(user.id)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <MoreVertical className="w-5 h-5 text-gray-600" />
-                  </Button>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Rooms</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Messages</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm text-gray-900">{user.id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{user.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${user.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${user.status === 'ONLINE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                      {user.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{user.totalRoomsJoined}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{user.totalMessagesSent}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <div className="relative">
+                      <Button
+                        useTailwind
+                        onClick={() => toggleDropdown(user.id)}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <MoreVertical className="w-5 h-5 text-gray-600" />
+                      </Button>
 
-                  {/* Dropdown Menu */}
-                  {openDropdown === user.id && (
-                    <div
-                      ref={dropdownRef}
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
-                    >
+                      {/* Dropdown Menu */}
+                      {openDropdown === user.id && (
+                        <div
+                          ref={dropdownRef}
+                          className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-[60]"
+                        >
                       <div className="py-1">
                         <Button
                           useTailwind
@@ -142,11 +144,13 @@ const UserManagementPage = () => {
                       </div>
                     </div>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* User Detail Modal */}

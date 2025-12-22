@@ -1,14 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import * as adminService from '../services/adminService';
+import { MoreVertical, Eye, Trash2 } from 'lucide-react';
 
 const RoomManagementPage = () => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     fetchRooms();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchRooms = async () => {
@@ -29,6 +44,7 @@ const RoomManagementPage = () => {
       await adminService.deleteRoom(roomId);
       toast.success('Xóa room thành công');
       fetchRooms();
+      setOpenDropdown(null);
     } catch (error) {
       toast.error('Lỗi xóa room');
     }
@@ -38,63 +54,90 @@ const RoomManagementPage = () => {
     try {
       const response = await adminService.getRoomById(roomId);
       setSelectedRoom(response.data);
+      setOpenDropdown(null);
     } catch (error) {
       toast.error('Lỗi tải chi tiết room');
     }
   };
 
-  if (loading) return <div className="p-8">Đang tải...</div>;
+  const toggleDropdown = (roomId) => {
+    setOpenDropdown(openDropdown === roomId ? null : roomId);
+  };
+
+  if (loading) return <div className="p-8">Loading...</div>;
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">Quản lý Rooms</h1>
+      <h1 className="text-3xl font-bold mb-8 text-gray-800">Rooms Management</h1>
 
       <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tên Room</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Created By</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Members</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Messages</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {rooms.map((room) => (
-              <tr key={room.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-900">{room.id}</td>
-                <td className="px-6 py-4 text-sm text-gray-900 font-medium">{room.name}</td>
-                <td className="px-6 py-4 text-sm">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    room.type === 'GROUP' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {room.type}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600">{room.createdByName}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{room.memberCount}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{room.totalMessages}</td>
-                <td className="px-6 py-4 text-sm space-x-2">
-                  <button
-                    onClick={() => viewRoomDetail(room.id)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    Xem
-                  </button>
-                  <button
-                    onClick={() => handleDeleteRoom(room.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Xóa
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Room Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Created By</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Members</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Messages</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {rooms.map((room) => (
+                <tr key={room.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm text-gray-900">{room.id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{room.name}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${room.type === 'GROUP' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                      {room.type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{room.createdByName}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{room.memberCount}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{room.totalMessages}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <div className="relative">
+                      <button
+                        onClick={() => toggleDropdown(room.id)}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <MoreVertical className="w-5 h-5 text-gray-600" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {openDropdown === room.id && (
+                        <div
+                          ref={dropdownRef}
+                          className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-[60]"
+                        >
+                          <div className="py-1">
+                            <button
+                              onClick={() => viewRoomDetail(room.id)}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View Details
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRoom(room.id)}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete Room
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Room Detail Modal */}
@@ -135,9 +178,8 @@ const RoomManagementPage = () => {
                         <p className="font-medium">{member.name}</p>
                         <p className="text-sm text-gray-600">{member.email}</p>
                       </div>
-                      <span className={`ml-auto px-2 py-1 rounded text-xs font-medium ${
-                        member.status === 'ONLINE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`ml-auto px-2 py-1 rounded text-xs font-medium ${member.status === 'ONLINE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
                         {member.status}
                       </span>
                     </div>
