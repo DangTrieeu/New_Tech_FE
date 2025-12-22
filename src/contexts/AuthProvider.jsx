@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import * as authService from '@/services/authService';
-import * as userService from '@/services/userService';
-import toast from 'react-hot-toast';
-import { AuthContext } from './AuthContextDefinition';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import * as authService from "@/services/authService";
+import * as userService from "@/services/userService";
+import toast from "react-hot-toast";
+import { AuthContext } from "./AuthContextDefinition";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -19,12 +19,12 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setAccessToken(null);
       setIsAuthenticated(false);
-      toast.error('Phiên đăng nhập đã hết hạn');
-      navigate('/login', { replace: true });
+      toast.error("Phiên đăng nhập đã hết hạn");
+      navigate("/login", { replace: true });
     };
 
-    window.addEventListener('auth:logout', handleAutoLogout);
-    return () => window.removeEventListener('auth:logout', handleAutoLogout);
+    window.addEventListener("auth:logout", handleAutoLogout);
+    return () => window.removeEventListener("auth:logout", handleAutoLogout);
   }, [navigate]);
 
   // Kiểm tra token khi app khởi động - CHỈ CHẠY 1 LẦN
@@ -36,7 +36,9 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     // Kiểm tra cả admin token và user token
-    const token = localStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken');
+    const token =
+      localStorage.getItem("adminAccessToken") ||
+      localStorage.getItem("accessToken");
 
     // Nếu không có token, không gọi API
     if (!token) {
@@ -56,15 +58,15 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       // Xử lý lỗi xác thực một cách yên lặng
       if (error.response?.status === 401) {
-        console.log('Token expired or invalid, clearing auth...');
+        console.log("Token expired or invalid, clearing auth...");
       } else {
-        console.error('Auth check failed:', error);
+        console.error("Auth check failed:", error);
       }
       // Clear tất cả thông tin xác thực (cả admin và user)
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('adminAccessToken');
-      localStorage.removeItem('adminRefreshToken');
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("adminAccessToken");
+      localStorage.removeItem("adminRefreshToken");
       setIsAuthenticated(false);
       setUser(null);
       setAccessToken(null);
@@ -81,14 +83,14 @@ export const AuthProvider = ({ children }) => {
       const newToken = response.data?.accessToken || response.accessToken;
 
       if (newToken) {
-        localStorage.setItem('accessToken', newToken);
+        localStorage.setItem("accessToken", newToken);
         setAccessToken(newToken);
         return newToken;
       }
 
-      throw new Error('No access token in refresh response');
+      throw new Error("No access token in refresh response");
     } catch (error) {
-      console.error('Refresh token failed:', error);
+      console.error("Refresh token failed:", error);
       // Clear auth state
       localStorage.clear();
       setUser(null);
@@ -102,20 +104,20 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       // Clear any old tokens before login to avoid sending invalid tokens
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('adminAccessToken');
-      localStorage.removeItem('adminRefreshToken');
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("adminAccessToken");
+      localStorage.removeItem("adminRefreshToken");
 
-      console.log('[AuthProvider] Attempting login with:', { email });
+      console.log("[AuthProvider] Attempting login with:", { email });
 
       const response = await authService.login(email, password);
 
-      console.log('[AuthProvider] Login response received:', {
+      console.log("[AuthProvider] Login response received:", {
         hasData: !!response,
         hasDataProperty: !!response?.data,
         dataKeys: response?.data ? Object.keys(response.data) : [],
-        responseKeys: Object.keys(response)
+        responseKeys: Object.keys(response),
       });
 
       // authService.login returns response.data from axios
@@ -123,37 +125,40 @@ export const AuthProvider = ({ children }) => {
       // So we need to access response.data to get the actual payload
       const payload = response.data || response;
 
-      console.log('[AuthProvider] Payload extracted:', {
+      console.log("[AuthProvider] Payload extracted:", {
         hasAccessToken: !!payload?.accessToken,
         hasRefreshToken: !!payload?.refreshToken,
         hasUser: !!payload?.user,
-        userRole: payload?.user?.role
+        userRole: payload?.user?.role,
       });
 
       // Kiểm tra response có đúng format không
       if (!payload || !payload.accessToken || !payload.refreshToken) {
-        console.error('[AuthProvider] Invalid response structure:', { response, payload });
-        throw new Error('Response không có accessToken hoặc refreshToken');
+        console.error("[AuthProvider] Invalid response structure:", {
+          response,
+          payload,
+        });
+        throw new Error("Response không có accessToken hoặc refreshToken");
       }
 
       // Update states
       const userData = payload.user;
 
       if (!userData) {
-        throw new Error('Response không có thông tin user');
+        throw new Error("Response không có thông tin user");
       }
 
-      const isAdmin = userData.role === 'ADMIN';
+      const isAdmin = userData.role === "ADMIN";
 
       // Lưu tokens dựa trên role
       if (isAdmin) {
-        localStorage.setItem('adminAccessToken', payload.accessToken);
-        localStorage.setItem('adminRefreshToken', payload.refreshToken);
-        console.log('[AuthProvider] Admin tokens saved to localStorage');
+        localStorage.setItem("adminAccessToken", payload.accessToken);
+        localStorage.setItem("adminRefreshToken", payload.refreshToken);
+        console.log("[AuthProvider] Admin tokens saved to localStorage");
       } else {
-        localStorage.setItem('accessToken', payload.accessToken);
-        localStorage.setItem('refreshToken', payload.refreshToken);
-        console.log('[AuthProvider] User tokens saved to localStorage');
+        localStorage.setItem("accessToken", payload.accessToken);
+        localStorage.setItem("refreshToken", payload.refreshToken);
+        console.log("[AuthProvider] User tokens saved to localStorage");
       }
 
       setUser(userData);
@@ -161,23 +166,24 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setLoading(false);
 
-      console.log('[AuthProvider] Login successful, state updated:', {
+      console.log("[AuthProvider] Login successful, state updated:", {
         userId: userData.id,
         userName: userData.name,
         isAdmin,
-        isAuthenticated: true
+        isAuthenticated: true,
       });
 
-      toast.success('Đăng nhập thành công!');
+      toast.success("Đăng nhập thành công!");
 
-      return { userData, isAdmin: userData.role === 'ADMIN' };
+      return { userData, isAdmin: userData.role === "ADMIN" };
     } catch (error) {
-      console.error('[AuthProvider] Login error:', {
+      console.error("[AuthProvider] Login error:", {
         message: error.message,
         response: error.response?.data,
-        status: error.response?.status
+        status: error.response?.status,
       });
-      const message = error.response?.data?.message || error.message || 'Đăng nhập thất bại';
+      const message =
+        error.response?.data?.message || error.message || "Đăng nhập thất bại";
       toast.error(message);
       throw error;
     }
@@ -193,11 +199,10 @@ export const AuthProvider = ({ children }) => {
     try {
       // Store access token
       if (accessTokenFromCookie) {
-        localStorage.setItem('accessToken', accessTokenFromCookie);
         setAccessToken(accessTokenFromCookie);
       }
 
-      // Get user profile
+      // Get user profile từ API (cookies tự động gửi kèm request)
       const response = await userService.getProfile();
       const userData = response.data || response.user;
 
@@ -205,12 +210,12 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true);
       setLoading(false);
 
-      toast.success('Đăng nhập Google thành công!');
+      toast.success("Đăng nhập Google thành công!");
       return userData;
     } catch (error) {
-      console.error('Google auth failed:', error);
+      console.error("Google auth failed:", error);
       localStorage.clear();
-      toast.error('Xác thực Google thất bại');
+      toast.error("Xác thực Google thất bại");
       throw error;
     }
   };
@@ -219,11 +224,11 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password) => {
     try {
       const response = await authService.register(name, email, password);
-      toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
-      navigate('/login');
+      toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
+      navigate("/login");
       return response;
     } catch (error) {
-      const message = error.response?.data?.message || 'Đăng ký thất bại';
+      const message = error.response?.data?.message || "Đăng ký thất bại";
       toast.error(message);
       throw error;
     }
@@ -234,15 +239,15 @@ export const AuthProvider = ({ children }) => {
     try {
       await authService.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       // Xóa tokens và user state
       localStorage.clear();
       setUser(null);
       setAccessToken(null);
       setIsAuthenticated(false);
-      toast.success('Đã đăng xuất');
-      navigate('/login');
+      toast.success("Đã đăng xuất");
+      navigate("/login");
     }
   };
 
@@ -251,10 +256,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await userService.updateProfile(data);
       setUser(response.user || response.data);
-      toast.success('Cập nhật thông tin thành công!');
+      toast.success("Cập nhật thông tin thành công!");
       return response;
     } catch (error) {
-      const message = error.response?.data?.message || 'Cập nhật thất bại';
+      const message = error.response?.data?.message || "Cập nhật thất bại";
       toast.error(message);
       throw error;
     }
@@ -263,11 +268,14 @@ export const AuthProvider = ({ children }) => {
   // Đổi mật khẩu
   const changePassword = async (oldPassword, newPassword) => {
     try {
-      const response = await userService.changePassword(oldPassword, newPassword);
-      toast.success('Đổi mật khẩu thành công!');
+      const response = await userService.changePassword(
+        oldPassword,
+        newPassword
+      );
+      toast.success("Đổi mật khẩu thành công!");
       return response;
     } catch (error) {
-      const message = error.response?.data?.message || 'Đổi mật khẩu thất bại';
+      const message = error.response?.data?.message || "Đổi mật khẩu thất bại";
       toast.error(message);
       throw error;
     }

@@ -75,11 +75,13 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Gọi API refresh token - cookies tự động được gửi
+        // Gọi API refresh token - refreshToken tự động gửi qua httpOnly cookie
         const { data } = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
-          {},
-          { withCredentials: true }
+          {}, // Body rỗng, refreshToken được gửi qua cookie
+          {
+            withCredentials: true // Quan trọng: gửi cookies kèm request
+          }
         );
 
         const newAccessToken = data.data?.accessToken || data.accessToken;
