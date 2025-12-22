@@ -24,8 +24,11 @@ export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
   const { isAuthenticated, user } = useAuth();
   const socketRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     const token =
       localStorage.getItem("adminAccessToken") ||
       localStorage.getItem("accessToken");
@@ -46,6 +49,7 @@ export const SocketProvider = ({ children }) => {
     }
 
     return () => {
+      isMountedRef.current = false;
       disconnectSocket();
     };
   }, [isAuthenticated]); // Removed 'user' to prevent unnecessary reconnects
@@ -90,21 +94,29 @@ export const SocketProvider = ({ children }) => {
         "[SocketContext] ✅ Socket connected successfully, ID:",
         newSocket.id
       );
-      setConnected(true);
+      if (isMountedRef.current) {
+        setConnected(true);
+      }
     });
 
     newSocket.on("disconnect", () => {
       console.log("[SocketContext] ❌ Socket disconnected");
-      setConnected(false);
+      if (isMountedRef.current) {
+        setConnected(false);
+      }
     });
 
     newSocket.on("connect_error", (error) => {
       console.error("[SocketContext] Socket connection error:", error.message);
-      setConnected(false);
+      if (isMountedRef.current) {
+        setConnected(false);
+      }
     });
 
     socketRef.current = newSocket;
-    setSocket(newSocket);
+    if (isMountedRef.current) {
+      setSocket(newSocket);
+    }
     console.log("[SocketContext] Socket instance created and stored in refs");
   };
 
@@ -113,8 +125,10 @@ export const SocketProvider = ({ children }) => {
       console.log("[SocketContext] Disconnecting socket...");
       socketRef.current.disconnect();
       socketRef.current = null;
-      setSocket(null);
-      setConnected(false);
+      if (isMountedRef.current) {
+        setSocket(null);
+        setConnected(false);
+      }
     }
   };
 
