@@ -247,19 +247,21 @@ export const AuthProvider = ({ children }) => {
       });
 
       // Tokens đã được lưu vào localStorage ở OAuthSuccessPage
-      // Set state ngay lập tức
+      // Batch all state updates together to avoid React error #185
       setLoading(false);
-      setUser(userData);
+      setInitialized(true);
       setAccessToken(accessToken);
       setIsAuthenticated(true);
-      setInitialized(true);
+      setUser(userData); // Set user LAST to ensure other states are ready
 
       console.log("[AuthProvider] User authenticated via Google OAuth:", {
         userId: userData.id,
         email: userData.email,
         isAuthenticated: true,
       });
-      toast.success("Đăng nhập Google thành công!");
+
+      // DO NOT call toast here - it causes React error #185
+      // Toast will be called from OAuthSuccessPage after navigation
 
       return userData;
     } catch (error) {

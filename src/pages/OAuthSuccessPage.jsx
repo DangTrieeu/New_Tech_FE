@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useLayoutEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import toast from "react-hot-toast";
 
 /**
  * OAuth Success Page
@@ -13,7 +14,7 @@ const OAuthSuccessPage = () => {
   const { handleGoogleAuthSuccess } = useAuth();
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const processOAuthCallback = async () => {
       try {
         // Đọc tokens từ URL params
@@ -56,21 +57,19 @@ const OAuthSuccessPage = () => {
         console.log("[OAuthSuccess] Tokens saved to localStorage");
         console.log("[OAuthSuccess] Calling handleGoogleAuthSuccess...");
 
-        // Call handleGoogleAuthSuccess với user data
+        // Call handleGoogleAuthSuccess với user data (NO TOAST INSIDE)
         await handleGoogleAuthSuccess(accessToken, userData);
 
-        console.log(
-          "[OAuthSuccess] Auth complete! Waiting for state update..."
-        );
+        console.log("[OAuthSuccess] Auth complete! Navigating immediately...");
 
-        // Đợi đủ lâu để React flush state updates và re-render
-        // Tăng từ 1000ms lên 1500ms để đảm bảo state đã propagate
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        console.log("[OAuthSuccess] Navigating to chat...");
-
-        // Navigate
+        // Navigate immediately - state updates are batched in React 18
         navigate("/chat", { replace: true });
+
+        // Show toast AFTER navigation to avoid React error #185
+        // Use setTimeout to ensure it runs after render cycle completes
+        setTimeout(() => {
+          toast.success("Đăng nhập Google thành công!");
+        }, 100);
       } catch (err) {
         console.error("[OAuthSuccess] Error:", err);
         setError(`Xác thực thất bại: ${err.message}`);
