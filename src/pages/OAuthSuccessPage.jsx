@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import toast from "react-hot-toast";
@@ -13,8 +13,16 @@ const OAuthSuccessPage = () => {
   const [searchParams] = useSearchParams();
   const { handleGoogleAuthSuccess } = useAuth();
   const [error, setError] = useState(null);
+  const hasProcessed = useRef(false); // Đảm bảo chỉ xử lý 1 lần
 
   useEffect(() => {
+    // Nếu đã xử lý rồi thì không làm gì nữa
+    if (hasProcessed.current) {
+      return;
+    }
+
+    hasProcessed.current = true; // Đánh dấu đã xử lý
+
     const processOAuthCallback = async () => {
       try {
         // Đọc tokens từ URL params
@@ -88,7 +96,8 @@ const OAuthSuccessPage = () => {
     };
 
     processOAuthCallback();
-  }, [handleGoogleAuthSuccess, navigate, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Chỉ chạy 1 lần khi component mount
 
   if (error) {
     return (
