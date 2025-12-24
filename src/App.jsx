@@ -1,20 +1,25 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { SocketProvider } from '@/contexts/SocketContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import ChatPage from './pages/ChatPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ProfilePage from './pages/ProfilePage';
-import ContactsPage from './pages/ContactsPage';
-import AboutPage from './pages/AboutPage';
-import WelcomePage from './pages/WelcomePage';
-import OAuthSuccessPage from './pages/OAuthSuccessPage';
-import DemoPage from './pages/DemoPage';
-import AdminLayout from './pages/AdminLayout';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { SocketProvider } from "@/contexts/SocketContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import ChatPage from "./pages/ChatPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import ProfilePage from "./pages/ProfilePage";
+import ContactsPage from "./pages/ContactsPage";
+import AboutPage from "./pages/AboutPage";
+import WelcomePage from "./pages/WelcomePage";
+import OAuthSuccessPage from "./pages/OAuthSuccessPage";
+import DemoPage from "./pages/DemoPage";
+import AdminLayout from "./pages/AdminLayout";
 
 function App() {
   return (
@@ -27,22 +32,28 @@ function App() {
               toastOptions={{
                 duration: 3000,
                 style: {
-                  background: 'var(--surface-color)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border-color)',
+                  background: "var(--surface-color)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--border-color)",
+                  zIndex: 9999,
                 },
                 success: {
                   iconTheme: {
-                    primary: '#10b981',
-                    secondary: '#fff',
+                    primary: "#10b981",
+                    secondary: "#fff",
                   },
                 },
                 error: {
                   iconTheme: {
-                    primary: '#ef4444',
-                    secondary: '#fff',
+                    primary: "#ef4444",
+                    secondary: "#fff",
                   },
                 },
+              }}
+              containerStyle={{
+                top: 20,
+                right: 20,
+                zIndex: 9999,
               }}
             />
             <Routes>

@@ -94,8 +94,27 @@ const ChatPage = () => {
       });
     };
 
+    const handleRoomUpdated = (data) => {
+      if (data.action === "members_added" && data.room) {
+        // Update room in rooms list
+        setRooms((prev) =>
+          prev.map((r) => (r.id === data.room.id ? data.room : r))
+        );
+
+        // Update selected room if it's the same room
+        if (selectedRoomRef.current?.id === data.room.id) {
+          setSelectedRoom(data.room);
+        }
+      }
+    };
+
     socket.on("receive_message", handleReceiveMessage);
-    return () => socket.off("receive_message", handleReceiveMessage);
+    socket.on("room_updated", handleRoomUpdated);
+
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+      socket.off("room_updated", handleRoomUpdated);
+    };
   }, [socket, connected]);
 
   useEffect(() => {
@@ -106,6 +125,15 @@ const ChatPage = () => {
         setLoading(true);
         const res = await messageService.getMessages(selectedRoom.id);
         setMessages(res.data || res.messages || []);
+
+        // Load full room details to get participants
+        if (selectedRoom.type === "GROUP") {
+          const roomDetail = await roomService.getRoomDetail(selectedRoom.id);
+          if (roomDetail?.data) {
+            setSelectedRoom(roomDetail.data);
+          }
+        }
+
         joinRoom?.(selectedRoom.id);
       } catch {
         toast.error("Không thể tải tin nhắn");
@@ -115,7 +143,7 @@ const ChatPage = () => {
     };
 
     loadMessages();
-  }, [selectedRoom, connected, joinRoom]);
+  }, [selectedRoom?.id, connected, joinRoom]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -129,9 +157,11 @@ const ChatPage = () => {
     const tempMessage = {
       id: `temp-${Date.now()}`,
       content: messageInput,
-      sender: user,
-      sender_id: user.id,
+      user: user,
+      user_id: user.id,
       room_id: selectedRoom.id,
+      type: "TEXT",
+      created_at: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, tempMessage]);

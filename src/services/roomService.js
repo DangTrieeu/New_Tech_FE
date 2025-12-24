@@ -12,6 +12,12 @@ export const getRooms = async () => {
   return response.data;
 };
 
+// Lấy chi tiết phòng chat
+export const getRoomDetail = async (roomId) => {
+  const response = await axiosInstance.get(`${API_ENDPOINTS.ROOMS}/${roomId}`);
+  return response.data;
+};
+
 // Tạo/lấy phòng chat 1-1
 export const createPrivateRoom = async (partnerId) => {
   const response = await axiosInstance.post(API_ENDPOINTS.PRIVATE_ROOM, {
