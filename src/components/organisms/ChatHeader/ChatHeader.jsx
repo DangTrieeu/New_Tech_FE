@@ -28,7 +28,11 @@ const ChatHeader = ({ room, currentUserId, onToggleInfo, onSummarize, onShowImag
             {displayName}
           </p>
           <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            {room.type === 'PRIVATE' ? 'Trực tuyến' : `${room.participant_count || 0} thành viên`}
+            {room.type === 'PRIVATE' 
+              ? 'Trực tuyến' 
+              : room.type === 'AI_PRIVATE'
+              ? '1 thành viên'
+              : `${room.participants?.length || room.participant_count || 0} thành viên`}
           </p>
         </div>
       </div>

@@ -89,21 +89,39 @@ const ChatPage = () => {
       if (selectedRoomRef.current?.id !== message.room_id) return;
 
       setMessages((prev) => {
-        if (prev.some((m) => m.id === message.id)) return prev;
-        return [...prev, message];
+        // Remove temp message if exists (to avoid duplicate)
+        const filteredPrev = prev.filter(m => !String(m.id).startsWith('temp-'));
+        
+        // Check if message already exists
+        if (filteredPrev.some((m) => m.id === message.id)) return prev;
+        
+        return [...filteredPrev, message];
       });
     };
 
     const handleRoomUpdated = (data) => {
       if (data.action === "members_added" && data.room) {
-        // Update room in rooms list
-        setRooms((prev) =>
-          prev.map((r) => (r.id === data.room.id ? data.room : r))
+        // Update room in rooms list with participant_count
+        setRooms((prev) => 
+          prev.map((r) => {
+            if (r.id === data.room.id) {
+              return {
+                ...r,
+                ...data.room,
+                participant_count: data.room.participants?.length || r.participant_count
+              };
+            }
+            return r;
+          })
         );
-
+        
         // Update selected room if it's the same room
         if (selectedRoomRef.current?.id === data.room.id) {
-          setSelectedRoom(data.room);
+          setSelectedRoom({
+            ...selectedRoomRef.current,
+            ...data.room,
+            participant_count: data.room.participants?.length || selectedRoomRef.current.participant_count
+          });
         }
       }
     };
@@ -127,10 +145,17 @@ const ChatPage = () => {
         setMessages(res.data || res.messages || []);
 
         // Load full room details to get participants
-        if (selectedRoom.type === "GROUP") {
+        if (selectedRoom.type === "GROUP" || selectedRoom.type === "AI_PRIVATE") {
           const roomDetail = await roomService.getRoomDetail(selectedRoom.id);
           if (roomDetail?.data) {
-            setSelectedRoom(roomDetail.data);
+            const updatedRoom = {
+              ...roomDetail.data,
+              participant_count: roomDetail.data.participants?.length || 0
+            };
+            setSelectedRoom(updatedRoom);
+            
+            // Update room in list
+            setRooms(prev => prev.map(r => r.id === updatedRoom.id ? updatedRoom : r));
           }
         }
 
