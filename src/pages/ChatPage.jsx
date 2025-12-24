@@ -90,11 +90,13 @@ const ChatPage = () => {
 
       setMessages((prev) => {
         // Remove temp message if exists (to avoid duplicate)
-        const filteredPrev = prev.filter(m => !String(m.id).startsWith('temp-'));
-        
+        const filteredPrev = prev.filter(
+          (m) => !String(m.id).startsWith("temp-")
+        );
+
         // Check if message already exists
         if (filteredPrev.some((m) => m.id === message.id)) return prev;
-        
+
         return [...filteredPrev, message];
       });
     };
@@ -102,25 +104,28 @@ const ChatPage = () => {
     const handleRoomUpdated = (data) => {
       if (data.action === "members_added" && data.room) {
         // Update room in rooms list with participant_count
-        setRooms((prev) => 
+        setRooms((prev) =>
           prev.map((r) => {
             if (r.id === data.room.id) {
               return {
                 ...r,
                 ...data.room,
-                participant_count: data.room.participants?.length || r.participant_count
+                participant_count:
+                  data.room.participants?.length || r.participant_count,
               };
             }
             return r;
           })
         );
-        
+
         // Update selected room if it's the same room
         if (selectedRoomRef.current?.id === data.room.id) {
           setSelectedRoom({
             ...selectedRoomRef.current,
             ...data.room,
-            participant_count: data.room.participants?.length || selectedRoomRef.current.participant_count
+            participant_count:
+              data.room.participants?.length ||
+              selectedRoomRef.current.participant_count,
           });
         }
       }
@@ -145,17 +150,22 @@ const ChatPage = () => {
         setMessages(res.data || res.messages || []);
 
         // Load full room details to get participants
-        if (selectedRoom.type === "GROUP" || selectedRoom.type === "AI_PRIVATE") {
+        if (
+          selectedRoom.type === "GROUP" ||
+          selectedRoom.type === "AI_PRIVATE"
+        ) {
           const roomDetail = await roomService.getRoomDetail(selectedRoom.id);
           if (roomDetail?.data) {
             const updatedRoom = {
               ...roomDetail.data,
-              participant_count: roomDetail.data.participants?.length || 0
+              participant_count: roomDetail.data.participants?.length || 0,
             };
             setSelectedRoom(updatedRoom);
-            
+
             // Update room in list
-            setRooms(prev => prev.map(r => r.id === updatedRoom.id ? updatedRoom : r));
+            setRooms((prev) =>
+              prev.map((r) => (r.id === updatedRoom.id ? updatedRoom : r))
+            );
           }
         }
 
@@ -226,12 +236,14 @@ const ChatPage = () => {
               onToggleInfo={() => setShowRoomInfo((p) => !p)}
             />
 
-            <MessageList
-              messages={messages}
-              currentUserId={user.id}
-              loading={loading}
-              messagesEndRef={messagesEndRef}
-            />
+            <div className="flex-1 overflow-y-auto">
+              <MessageList
+                messages={messages}
+                currentUserId={user.id}
+                loading={loading}
+                messagesEndRef={messagesEndRef}
+              />
+            </div>
 
             <MessageInput
               value={messageInput}

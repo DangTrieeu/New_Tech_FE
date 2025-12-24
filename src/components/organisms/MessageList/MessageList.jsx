@@ -153,7 +153,7 @@ const MessageList = ({
   };
 
   return (
-    <div>
+    <div className="p-4">
       {messages.map((msg, index) => {
         const isOwn = msg.user_id === currentUserId;
         const previousMsg = index > 0 ? messages[index - 1] : null;
