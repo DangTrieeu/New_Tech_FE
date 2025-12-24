@@ -62,6 +62,7 @@ const ChatPage = () => {
 
   /* ================= REFS ================= */
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const selectedRoomRef = useRef(null);
 
   useEffect(() => {
@@ -170,6 +171,14 @@ const ChatPage = () => {
         }
 
         joinRoom?.(selectedRoom.id);
+
+        // Scroll to bottom after loading messages
+        setTimeout(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop =
+              scrollContainerRef.current.scrollHeight;
+          }
+        }, 100);
       } catch {
         toast.error("Không thể tải tin nhắn");
       } finally {
@@ -181,7 +190,10 @@ const ChatPage = () => {
   }, [selectedRoom?.id, connected, joinRoom]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current && messages.length > 0) {
+      scrollContainerRef.current.scrollTop =
+        scrollContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   /* ================= HANDLERS ================= */
@@ -236,7 +248,7 @@ const ChatPage = () => {
               onToggleInfo={() => setShowRoomInfo((p) => !p)}
             />
 
-            <div className="flex-1 overflow-y-auto">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
               <MessageList
                 messages={messages}
                 currentUserId={user.id}
