@@ -113,6 +113,11 @@ export const SocketProvider = ({ children }) => {
       }
     });
 
+    // 🔍 DEBUG: Log ALL events from backend
+    newSocket.onAny((eventName, ...args) => {
+      console.log(`🔵 [SocketContext] Received event: "${eventName}"`, args);
+    });
+
     socketRef.current = newSocket;
     if (isMountedRef.current) {
       setSocket(newSocket);
@@ -185,6 +190,24 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
+  // Recall message
+  const recallMessage = (messageId) => {
+    console.log("[SocketContext] recallMessage called:", {
+      messageId,
+      socketExists: !!socket,
+      socketConnected: socket?.connected,
+    });
+
+    if (socket && socket.connected) {
+      socket.emit("recall_message", { messageId });
+      console.log("[SocketContext] Emitted recall_message event");
+    } else {
+      console.error(
+        "[SocketContext] Cannot recall message - socket not connected"
+      );
+    }
+  };
+
   // Listen for messages
   const onReceiveMessage = (callback) => {
     if (socket) {
@@ -198,6 +221,14 @@ export const SocketProvider = ({ children }) => {
     if (socket) {
       socket.on("message_deleted", callback);
       return () => socket.off("message_deleted", callback);
+    }
+  };
+
+  // Listen for message recalled
+  const onMessageRecalled = (callback) => {
+    if (socket) {
+      socket.on("message_recalled", callback);
+      return () => socket.off("message_recalled", callback);
     }
   };
 
@@ -216,8 +247,10 @@ export const SocketProvider = ({ children }) => {
     leaveRoom,
     sendMessage,
     deleteMessage,
+    recallMessage,
     onReceiveMessage,
     onMessageDeleted,
+    onMessageRecalled,
     onUserTyping,
   };
 

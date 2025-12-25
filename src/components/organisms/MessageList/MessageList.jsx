@@ -1,5 +1,5 @@
-import React from "react";
-import { FileText, Download, Image as ImageIcon } from "lucide-react";
+import React, { useRef } from "react";
+import { FileText, Download, Image as ImageIcon, Reply, RotateCcw } from "lucide-react";
 import SmartReplyButton from "@/components/molecules/SmartReplyButton/SmartReplyButton";
 import {
   shouldGroupMessages,
@@ -15,7 +15,11 @@ const MessageList = ({
   messagesEndRef,
   onSelectSmartReply,
   onImageClick,
+  onReply,
+  onRecall,
 }) => {
+  const messagesRef = useRef({});
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -31,6 +35,16 @@ const MessageList = ({
       </div>
     );
   }
+
+  // Scroll to a specific message
+  const scrollToMessage = (messageId) => {
+    const element = messagesRef.current[messageId];
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.classList.add("highlight");
+      setTimeout(() => element.classList.remove("highlight"), 2000);
+    }
+  };
 
   // Helper function to check if URL is an image
   const isImageUrl = (url) => {
@@ -62,6 +76,26 @@ const MessageList = ({
   // Render message content based on type
   const renderMessageContent = (msg) => {
     const isOwn = msg.user_id === currentUserId;
+
+    // Recalled message
+    if (msg.is_recalled) {
+      return (
+        <div className="recalled-message flex items-center gap-2 py-2 px-3" style={{
+          backgroundColor: 'var(--hover-color)',
+          color: 'var(--text-secondary)',
+          fontStyle: 'italic',
+          borderRadius: '8px'
+        }}>
+          <RotateCcw className="w-4 h-4" />
+          <span>Tin nhắn đã được thu hồi</span>
+          {msg.recalled_at && (
+            <span className="text-xs ml-auto">
+              {formatMessageTime(msg.recalled_at)}
+            </span>
+          )}
+        </div>
+      );
+    }
 
     // FILE type message
     if (msg.type === "FILE" && msg.content) {
@@ -154,6 +188,7 @@ const MessageList = ({
 
   return (
     <div className="p-4">
+
       {messages.map((msg, index) => {
         const isOwn = msg.user_id === currentUserId;
         const previousMsg = index > 0 ? messages[index - 1] : null;
@@ -183,6 +218,7 @@ const MessageList = ({
 
             {/* Message */}
             <div
+              ref={(el) => (messagesRef.current[msg.id] = el)}
               className={`flex ${isOwn ? "justify-end" : "justify-start"} ${
                 shouldGroup ? "mb-1" : "mb-3 mt-3"
               } group`}
@@ -207,14 +243,14 @@ const MessageList = ({
                 {/* Message bubble - NO background/padding for images */}
                 <div
                   className={`${
-                    isImageMessage
+                    isImageMessage || msg.is_recalled
                       ? ""
                       : `px-4 py-2 ${
                           shouldGroup ? "rounded-2xl" : "rounded-2xl"
                         }`
                   }`}
                   style={
-                    isImageMessage
+                    isImageMessage || msg.is_recalled
                       ? {}
                       : {
                           backgroundColor: isOwn
@@ -225,10 +261,35 @@ const MessageList = ({
                         }
                   }
                 >
+                  {/* Reply preview - shown above message content */}
+                  {msg.replyToMessage && !msg.is_recalled && (
+                    <div
+                      className="reply-preview mb-2 p-2 rounded cursor-pointer border-l-2"
+                      style={{
+                        backgroundColor: isOwn ? 'rgba(255,255,255,0.1)' : 'var(--hover-color)',
+                        borderColor: 'var(--primary-color)',
+                      }}
+                      onClick={() => scrollToMessage(msg.replyToMessage.id)}
+                    >
+                      <div className="text-xs font-semibold mb-1" style={{
+                        color: isOwn ? 'rgba(255,255,255,0.9)' : 'var(--primary-color)'
+                      }}>
+                        {msg.replyToMessage.user?.name || 'Unknown'}
+                      </div>
+                      <div className="text-sm opacity-80 truncate">
+                        {msg.replyToMessage.is_recalled
+                          ? '🚫 Tin nhắn đã thu hồi'
+                          : msg.replyToMessage.content
+                        }
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Message content */}
                   {renderMessageContent(msg)}
                 </div>
 
-                {/* Show time and Smart Reply button */}
+                {/* Show time, actions and Smart Reply button */}
                 {(() => {
                   const nextMsg =
                     index < messages.length - 1 ? messages[index + 1] : null;
@@ -253,12 +314,43 @@ const MessageList = ({
                           {formatMessageTime(msg.created_at)}
                           {msg.status === "sending" && " • Đang gửi..."}
                         </p>
+
+                        {/* Message actions - only for real non-recalled messages */}
+                        {isRealMessage && !msg.is_recalled && (
+                          <div className="message-actions flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Reply button - for all messages */}
+                            {onReply && (
+                              <button
+                                onClick={() => onReply(msg)}
+                                className="p-1 rounded hover:bg-opacity-10 hover:bg-gray-500 transition-colors"
+                                style={{ color: 'var(--text-secondary)' }}
+                                title="Trả lời"
+                              >
+                                <Reply className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {/* Recall button - only for own messages */}
+                            {isOwn && onRecall && (
+                              <button
+                                onClick={() => onRecall(msg.id)}
+                                className="p-1 rounded hover:bg-opacity-10 hover:bg-gray-500 transition-colors"
+                                style={{ color: 'var(--text-secondary)' }}
+                                title="Thu hồi"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                         {/* Show Smart Reply button only for real messages from other users (not AI, not temp) */}
                         {!isOwn &&
                           msg.type === "TEXT" &&
                           onSelectSmartReply &&
                           isRealMessage &&
-                          !isAIMessage && (
+                          !isAIMessage &&
+                          !msg.is_recalled && (
                             <SmartReplyButton
                               messageId={msg.id}
                               onSelectReply={onSelectSmartReply}

@@ -7,10 +7,14 @@ import { API_ENDPOINTS } from '@/config/api';
  */
 
 // Lấy lịch sử tin nhắn
-export const getMessages = async (roomId, page = 1, limit = 50) => {
-  const response = await axiosInstance.get(API_ENDPOINTS.MESSAGES(roomId), {
-    params: { page, limit },
-  });
+export const getMessages = async (roomId) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.MESSAGES(roomId));
+  return response.data;
+};
+
+// Recall message (thu hồi tin nhắn)
+export const recallMessage = async (messageId) => {
+  const response = await axiosInstance.put(`/api/messages/recall/${messageId}`);
   return response.data;
 };
 
