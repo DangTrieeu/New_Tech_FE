@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSocket } from "@/contexts/SocketContext";
 import * as roomService from "@/services/roomService";
 import * as messageService from "@/services/messageService";
+import { useFileUpload } from "@/hooks/useFileUpload";
 import toast from "react-hot-toast";
 
 import ChatSidebar from "@/components/organisms/ChatSidebar/ChatSidebar";
@@ -45,6 +46,77 @@ const ChatPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  /* ================= FILE UPLOAD ================= */
+  const {
+    file: selectedFile,
+    uploading,
+    progress: uploadProgress,
+    handleFileSelect: selectFile,
+    uploadFile: startUpload,
+    cancelUpload: cancelFileUpload,
+  } = useFileUpload(
+    // onSuccess callback
+    (result) => {
+      console.log('✅ [ChatPage] File uploaded successfully:', result);
+
+      // Gửi message với file URL
+      if (selectedRoom && socket?.connected) {
+        const fileMessage = {
+          roomId: selectedRoom.id,
+          content: result.url,
+          type: 'FILE',
+          metadata: {
+            filename: result.filename,
+            mimetype: result.mimetype,
+            size: result.size,
+            originalName: result.originalName || result.filename,
+          },
+          reply_to_message_id: replyingTo?.id || null,
+        };
+
+        // Tạo temp message để hiển thị ngay
+        const tempMessage = {
+          id: `temp-${Date.now()}`,
+          content: result.url,
+          user: user,
+          user_id: user.id,
+          room_id: selectedRoom.id,
+          type: 'FILE',
+          created_at: new Date().toISOString(),
+          metadata: fileMessage.metadata,
+          reply_to_message_id: replyingTo?.id || null,
+          replyToMessage: replyingTo || null,
+        };
+
+        setMessages((prev) => [...prev, tempMessage]);
+
+        // Clear reply state
+        setReplyingTo(null);
+
+        // Gửi qua socket
+        sendMessage(fileMessage);
+
+        // Auto scroll
+        shouldAutoScrollRef.current = true;
+
+        toast.success('Đã gửi file thành công');
+      }
+    },
+    // onError callback
+    (error) => {
+      console.error('❌ [ChatPage] File upload failed:', error);
+      toast.error(error.response?.data?.message || 'Upload file thất bại');
+    }
+  );
+
+  // Auto upload when file is selected
+  useEffect(() => {
+    if (selectedFile && !uploading) {
+      console.log('🚀 [ChatPage] Auto-uploading file:', selectedFile.name);
+      startUpload();
+    }
+  }, [selectedFile, uploading, startUpload]);
 
   /* ================= REFS ================= */
   const messagesEndRef = useRef(null);
@@ -382,22 +454,33 @@ const ChatPage = () => {
     await logout();
   };
 
+  /* ================= FILE UPLOAD HANDLERS ================= */
+  const handleFileSelect = async (file) => {
+    console.log('📎 [ChatPage] File selected:', file.name, file.type);
+
+    if (!selectedRoom) {
+      toast.error('Vui lòng chọn một phòng chat');
+      return;
+    }
+
+    // Chỉ cần select file, useEffect sẽ tự động upload
+    await selectFile(file);
+  };
+
+  const handleCancelUpload = () => {
+    cancelFileUpload();
+    toast.info('Đã hủy upload file');
+  };
+
   /* ================= PAGINATION ================= */
   const loadMoreMessages = async () => {
-    if (loadingMore || !hasMore || !selectedRoom) return;
+    if (!selectedRoom || loadingMore) return;
 
     setLoadingMore(true);
 
     try {
-      const nextPage = currentPage + 1;
-      const res = await messageService.getMessages(selectedRoom.id, nextPage, 5);
+      const res = await messageService.getMessages(selectedRoom.id, currentPage);
       const messagesData = res.data || res.messages || [];
-
-      if (messagesData.length === 0) {
-        setHasMore(false);
-        setLoadingMore(false);
-        return;
-      }
 
       // Sort messages chronologically (old → new) based on created_at
       const sortedMessages = messagesData.sort((a, b) => {
@@ -406,19 +489,17 @@ const ChatPage = () => {
         return dateA - dateB; // Ascending order: oldest first
       });
 
-      // Prepend older messages to the beginning (maintain chronological order)
-      setMessages((prev) => [...sortedMessages, ...prev]);
+      setMessages((prev) => [...prev, ...sortedMessages]);
 
-      // Check if there are more messages
-      // Try to get hasMore from response, fallback to calculation
-      const hasMoreMessages = res.hasMore !== undefined
-        ? res.hasMore
-        : res.currentPage < res.totalPages;
+      // Check if we have more messages to load
+      if (messagesData.length === 0 || messagesData.length < 100) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
 
-      setHasMore(hasMoreMessages);
-      setCurrentPage(nextPage);
-    } catch (error) {
-      console.error('Error loading more messages:', error);
+      setCurrentPage((prev) => prev + 1);
+    } catch {
       toast.error("Không thể tải thêm tin nhắn");
     } finally {
       setLoadingMore(false);
@@ -480,6 +561,11 @@ const ChatPage = () => {
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               onSubmit={handleSendMessage}
+              onFileSelect={handleFileSelect}
+              uploading={uploading}
+              uploadProgress={uploadProgress}
+              selectedFile={selectedFile}
+              onCancelUpload={handleCancelUpload}
               replyingTo={replyingTo}
               onCancelReply={handleCancelReply}
             />
@@ -510,3 +596,4 @@ const ChatPage = () => {
 };
 
 export default ChatPage;
+
