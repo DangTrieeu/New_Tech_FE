@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import * as adminService from '../services/adminService';
 import { MoreVertical, Eye, Trash2 } from 'lucide-react';
 import Button from '@/components/atoms/Button/Button';
+import { useDebounce } from '@/hooks/useDebounce';
+import TableControls from '@/components/organisms/TableControls/TableControls';
+import SortableTableHeader from '@/components/molecules/SortableTableHeader/SortableTableHeader';
+import Pagination from '@/components/molecules/Pagination/Pagination';
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
@@ -10,10 +14,44 @@ const UserManagementPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownRef = useRef(null);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [limit, setLimit] = useState(10);
+  
+  // Sorting states
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+  
+  // Search state
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await adminService.getAllUsers({
+        page: currentPage,
+        limit,
+        sortBy,
+        sortOrder,
+        search: debouncedSearch
+      });
+      setUsers(response.data.users);
+      setTotalPages(response.data.totalPages);
+      setTotalUsers(response.data.total);
+    } catch (error) {
+      toast.error('Lỗi tải danh sách users');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, limit, sortBy, sortOrder, debouncedSearch]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -26,17 +64,6 @@ const UserManagementPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await adminService.getAllUsers();
-      setUsers(response.data.users);
-    } catch (error) {
-      toast.error('Lỗi tải danh sách users');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteUser = async (userId) => {
     if (!confirm('Bạn có chắc muốn xóa user này?')) return;
@@ -65,24 +92,108 @@ const UserManagementPage = () => {
     setOpenDropdown(openDropdown === userId ? null : userId);
   };
 
-  if (loading) return <div className="p-8">Đang tải...</div>;
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const handleLimitChange = (e) => {
+    setLimit(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">User Management</h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
+      </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <TableControls
+        searchValue={searchTerm}
+        onSearchChange={handleSearchChange}
+        searchPlaceholder="Tìm kiếm theo tên hoặc email..."
+        limitValue={limit}
+        onLimitChange={handleLimitChange}
+        totalItems={totalUsers}
+        itemLabel="users"
+      />
+
+      <div className="bg-white rounded-xl shadow overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            <div className="text-gray-600">Đang tải...</div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-100">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Rooms</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Messages</th>
+                <SortableTableHeader
+                  label="ID"
+                  field="id"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={handleSort}
+                  sortable={false}
+                />
+                <SortableTableHeader
+                  label="Name"
+                  field="name"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Email"
+                  field="email"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Role"
+                  field="role"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Status"
+                  field="status"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Rooms"
+                  field="totalRoomsJoined"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+                <SortableTableHeader
+                  label="Messages"
+                  field="totalMessagesSent"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={handleSort}
+                />
                 <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
@@ -151,6 +262,15 @@ const UserManagementPage = () => {
             </tbody>
           </table>
         </div>
+        
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalUsers}
+          itemsPerPage={limit}
+          onPageChange={handlePageChange}
+          itemsOnCurrentPage={users.length}
+        />
       </div>
 
       {/* User Detail Modal */}

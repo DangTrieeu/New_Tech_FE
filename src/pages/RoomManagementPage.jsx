@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import * as adminService from '../services/adminService';
 import { MoreVertical, Eye, Trash2 } from 'lucide-react';
+import Button from '@/components/atoms/Button/Button';
 
 const RoomManagementPage = () => {
   const [rooms, setRooms] = useState([]);
@@ -10,9 +11,21 @@ const RoomManagementPage = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const dropdownRef = useRef(null);
 
+  const fetchRooms = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await adminService.getAllRooms({});
+      setRooms(response.data.rooms);
+    } catch (error) {
+      toast.error('Lỗi tải danh sách rooms');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRooms();
-  }, []);
+  }, [fetchRooms]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -25,17 +38,6 @@ const RoomManagementPage = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const fetchRooms = async () => {
-    try {
-      const response = await adminService.getAllRooms();
-      setRooms(response.data.rooms);
-    } catch (error) {
-      toast.error('Lỗi tải danh sách rooms');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteRoom = async (roomId) => {
     if (!confirm('Bạn có chắc muốn xóa room này?')) return;
@@ -64,13 +66,18 @@ const RoomManagementPage = () => {
     setOpenDropdown(openDropdown === roomId ? null : roomId);
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">Rooms Management</h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">Rooms Management</h1>
+      </div>
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            <div className="text-gray-600">Đang tải...</div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-100">
@@ -100,12 +107,13 @@ const RoomManagementPage = () => {
                   <td className="px-6 py-4 text-sm text-gray-600">{room.totalMessages}</td>
                   <td className="px-6 py-4 text-sm">
                     <div className="relative">
-                      <button
+                      <Button
+                        useTailwind
                         onClick={() => toggleDropdown(room.id)}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <MoreVertical className="w-5 h-5 text-gray-600" />
-                      </button>
+                      </Button>
 
                       {/* Dropdown Menu */}
                       {openDropdown === room.id && (
@@ -114,20 +122,22 @@ const RoomManagementPage = () => {
                           className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-[60]"
                         >
                           <div className="py-1">
-                            <button
+                            <Button
+                              useTailwind
                               onClick={() => viewRoomDetail(room.id)}
                               className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                             >
                               <Eye className="w-4 h-4" />
                               View Details
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              useTailwind
                               onClick={() => handleDeleteRoom(room.id)}
                               className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                               Delete Room
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -146,12 +156,13 @@ const RoomManagementPage = () => {
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Chi tiết Room</h2>
-              <button
+              <Button
+                useTailwind
                 onClick={() => setSelectedRoom(null)}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
               >
                 ×
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-4">

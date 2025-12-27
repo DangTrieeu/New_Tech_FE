@@ -42,8 +42,15 @@ export const adminLogin = async (email, password) => {
 };
 
 // ==================== User Management ====================
-export const getAllUsers = async () => {
-  const response = await adminApi.get('/admin/users');
+export const getAllUsers = async ({ page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc', search = '' } = {}) => {
+  const params = new URLSearchParams();
+  if (page) params.append('page', page);
+  if (limit) params.append('limit', limit);
+  if (sortBy) params.append('sortBy', sortBy);
+  if (sortOrder) params.append('sortOrder', sortOrder);
+  if (search) params.append('search', search);
+  
+  const response = await adminApi.get(`/admin/users?${params.toString()}`);
   return response.data;
 };
 
@@ -63,8 +70,15 @@ export const deleteUser = async (id) => {
 };
 
 // ==================== Room Management ====================
-export const getAllRooms = async () => {
-  const response = await adminApi.get('/admin/rooms');
+export const getAllRooms = async ({ page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc', search = '' } = {}) => {
+  const params = new URLSearchParams();
+  if (page) params.append('page', page);
+  if (limit) params.append('limit', limit);
+  if (sortBy) params.append('sortBy', sortBy);
+  if (sortOrder) params.append('sortOrder', sortOrder);
+  if (search) params.append('search', search);
+  
+  const response = await adminApi.get(`/admin/rooms?${params.toString()}`);
   return response.data;
 };
 
