@@ -11,7 +11,9 @@ const MessageInput = ({
   uploadProgress,
   selectedFile,
   onCancelUpload,
-  placeholder
+  placeholder,
+  replyingTo,
+  onCancelReply,
 }) => {
   const fileInputRef = useRef(null);
 
@@ -32,6 +34,43 @@ const MessageInput = ({
 
   return (
     <div className="border-t" style={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)' }}>
+      {/* Reply Preview */}
+      {replyingTo && (
+        <div className="px-4 pt-3 pb-2">
+          <div
+            className="flex items-start gap-2 p-3 rounded-lg border-l-4"
+            style={{
+              backgroundColor: 'var(--hover-color)',
+              borderColor: 'var(--primary-color)'
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold" style={{ color: 'var(--primary-color)' }}>
+                  ↩️ Đang trả lời {replyingTo.user?.name || 'Unknown'}
+                </span>
+              </div>
+              <div className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>
+                {replyingTo.is_recalled
+                  ? '🚫 Tin nhắn đã thu hồi'
+                  : replyingTo.content
+                }
+              </div>
+            </div>
+            {onCancelReply && (
+              <button
+                onClick={onCancelReply}
+                className="p-1 rounded hover:bg-red-100 transition-colors"
+                type="button"
+                title="Hủy trả lời"
+              >
+                <X className="w-4 h-4 text-red-500" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* File Upload Progress */}
       {uploading && (
         <div className="px-4 pt-3 pb-2">
@@ -119,7 +158,13 @@ const MessageInput = ({
             value={value}
             onChange={onChange}
             disabled={uploading}
-            placeholder={uploading ? "Đang tải file..." : (placeholder || "Nhập tin nhắn...")}
+            placeholder={
+              uploading
+                ? "Đang tải file..."
+                : replyingTo
+                  ? "Nhập câu trả lời..."
+                  : (placeholder || "Nhập tin nhắn...")
+            }
             className="flex-1 px-4 py-2 rounded-lg outline-none transition-colors"
             style={{
               backgroundColor: 'var(--background-color)',

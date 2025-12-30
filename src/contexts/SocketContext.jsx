@@ -1,14 +1,20 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
-import { API_BASE_URL } from '@/config/api';
-import { useAuth } from './AuthContext';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
+import { io } from "socket.io-client";
+import { API_BASE_URL } from "@/config/api";
+import { useAuth } from "./AuthContext";
 
 const SocketContext = createContext(null);
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
   if (!context) {
-    throw new Error('useSocket must be used within SocketProvider');
+    throw new Error("useSocket must be used within SocketProvider");
   }
   return context;
 };
@@ -18,104 +24,132 @@ export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
   const { isAuthenticated, user } = useAuth();
   const socketRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken');
+    isMountedRef.current = true;
 
-    console.log('[SocketContext] Auth state or token changed:', {
+    const token =
+      localStorage.getItem("adminAccessToken") ||
+      localStorage.getItem("accessToken");
+
+    console.log("[SocketContext] Auth state or token changed:", {
       isAuthenticated,
       hasToken: !!token,
       userExists: !!user,
       userName: user?.name,
-      userRole: user?.role
+      userRole: user?.role,
     });
 
     if (isAuthenticated && token) {
       connectSocket();
     } else {
-      console.log('[SocketContext] Not connecting - no auth or token');
+      console.log("[SocketContext] Not connecting - no auth or token");
       disconnectSocket();
     }
 
     return () => {
+      isMountedRef.current = false;
       disconnectSocket();
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated]); // Removed 'user' to prevent unnecessary reconnects
 
   const connectSocket = () => {
-    const token = localStorage.getItem('adminAccessToken') || localStorage.getItem('accessToken');
+    const token =
+      localStorage.getItem("adminAccessToken") ||
+      localStorage.getItem("accessToken");
 
-    console.log('[SocketContext] Attempting to connect socket:', {
+    console.log("[SocketContext] Attempting to connect socket:", {
       hasToken: !!token,
       socketExists: !!socketRef.current,
       socketAlreadyConnected: socketRef.current?.connected,
-      token: token ? `${token.substring(0, 20)}...` : 'null'
+      token: token ? `${token.substring(0, 20)}...` : "null",
     });
 
     if (!token) {
-      console.error('[SocketContext] Cannot connect - no token found');
+      console.error("[SocketContext] Cannot connect - no token found");
       return;
     }
 
     if (socketRef.current) {
       if (socketRef.current.connected) {
-        console.log('[SocketContext] Socket already connected, skipping');
+        console.log("[SocketContext] Socket already connected, skipping");
         return;
       } else {
-        console.log('[SocketContext] Socket exists but not connected, cleaning up...');
+        console.log(
+          "[SocketContext] Socket exists but not connected, cleaning up..."
+        );
         disconnectSocket();
       }
     }
 
-    console.log('[SocketContext] Creating new socket connection...');
+    console.log("[SocketContext] Creating new socket connection...");
     const newSocket = io(API_BASE_URL, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ["websocket", "polling"],
     });
 
-    newSocket.on('connect', () => {
-      console.log('[SocketContext] ✅ Socket connected successfully, ID:', newSocket.id);
-      setConnected(true);
+    newSocket.on("connect", () => {
+      console.log(
+        "[SocketContext] ✅ Socket connected successfully, ID:",
+        newSocket.id
+      );
+      if (isMountedRef.current) {
+        setConnected(true);
+      }
     });
 
-    newSocket.on('disconnect', () => {
-      console.log('[SocketContext] ❌ Socket disconnected');
-      setConnected(false);
+    newSocket.on("disconnect", () => {
+      console.log("[SocketContext] ❌ Socket disconnected");
+      if (isMountedRef.current) {
+        setConnected(false);
+      }
     });
 
-    newSocket.on('connect_error', (error) => {
-      console.error('[SocketContext] Socket connection error:', error.message);
-      setConnected(false);
+    newSocket.on("connect_error", (error) => {
+      console.error("[SocketContext] Socket connection error:", error.message);
+      if (isMountedRef.current) {
+        setConnected(false);
+      }
+    });
+
+    // 🔍 DEBUG: Log ALL events from backend
+    newSocket.onAny((eventName, ...args) => {
+      console.log(`🔵 [SocketContext] Received event: "${eventName}"`, args);
     });
 
     socketRef.current = newSocket;
-    setSocket(newSocket);
-    console.log('[SocketContext] Socket instance created and stored in refs');
+    if (isMountedRef.current) {
+      setSocket(newSocket);
+    }
+    console.log("[SocketContext] Socket instance created and stored in refs");
   };
 
   const disconnectSocket = () => {
     if (socketRef.current) {
-      console.log('[SocketContext] Disconnecting socket...');
+      console.log("[SocketContext] Disconnecting socket...");
       socketRef.current.disconnect();
       socketRef.current = null;
-      setSocket(null);
-      setConnected(false);
+      if (isMountedRef.current) {
+        setSocket(null);
+        setConnected(false);
+      }
     }
   };
 
   // Join room
   const joinRoom = (roomId) => {
-    console.log('[SocketContext] joinRoom called:', {
+    console.log("[SocketContext] joinRoom called:", {
       roomId,
       socketExists: !!socket,
-      socketConnected: socket?.connected
+      socketConnected: socket?.connected,
     });
 
     if (socket && socket.connected) {
-      socket.emit('join_room', { roomId });
-      console.log('[SocketContext] Emitted join_room event');
+      socket.emit("join_room", { roomId });
+      console.log("[SocketContext] Emitted join_room event");
     } else {
-      console.error('[SocketContext] Cannot join room - socket not connected');
+      console.error("[SocketContext] Cannot join room - socket not connected");
     }
   };
 
@@ -123,57 +157,86 @@ export const SocketProvider = ({ children }) => {
   const leaveRoom = (roomId) => {
     if (socket) {
       // Emit as object for consistency
-      socket.emit('leave_room', { roomId });
+      socket.emit("leave_room", { roomId });
     }
   };
 
   // Send message
   const sendMessage = (data) => {
-    console.log('[SocketContext] sendMessage called:', {
+    console.log("[SocketContext] sendMessage called:", {
       data,
       socketExists: !!socket,
-      socketConnected: socket?.connected
+      socketConnected: socket?.connected,
     });
 
     if (socket && socket.connected) {
-      socket.emit('send_message', data);
-      console.log('[SocketContext] Emitted send_message event');
+      socket.emit("send_message", data);
+      console.log("[SocketContext] Emitted send_message event");
     } else {
-      console.error('[SocketContext] Cannot send message - socket not connected:', {
-        socketExists: !!socket,
-        connected: socket?.connected
-      });
+      console.error(
+        "[SocketContext] Cannot send message - socket not connected:",
+        {
+          socketExists: !!socket,
+          connected: socket?.connected,
+        }
+      );
     }
   };
 
   // Delete message
   const deleteMessage = (messageId) => {
     if (socket) {
-      socket.emit('delete_message', { messageId });
+      socket.emit("delete_message", { messageId });
+    }
+  };
+
+  // Recall message
+  const recallMessage = (messageId) => {
+    console.log("[SocketContext] recallMessage called:", {
+      messageId,
+      socketExists: !!socket,
+      socketConnected: socket?.connected,
+    });
+
+    if (socket && socket.connected) {
+      socket.emit("recall_message", { messageId });
+      console.log("[SocketContext] Emitted recall_message event");
+    } else {
+      console.error(
+        "[SocketContext] Cannot recall message - socket not connected"
+      );
     }
   };
 
   // Listen for messages
   const onReceiveMessage = (callback) => {
     if (socket) {
-      socket.on('receive_message', callback);
-      return () => socket.off('receive_message', callback);
+      socket.on("receive_message", callback);
+      return () => socket.off("receive_message", callback);
     }
   };
 
   // Listen for message deleted
   const onMessageDeleted = (callback) => {
     if (socket) {
-      socket.on('message_deleted', callback);
-      return () => socket.off('message_deleted', callback);
+      socket.on("message_deleted", callback);
+      return () => socket.off("message_deleted", callback);
+    }
+  };
+
+  // Listen for message recalled
+  const onMessageRecalled = (callback) => {
+    if (socket) {
+      socket.on("message_recalled", callback);
+      return () => socket.off("message_recalled", callback);
     }
   };
 
   // Listen for typing
   const onUserTyping = (callback) => {
     if (socket) {
-      socket.on('user_typing', callback);
-      return () => socket.off('user_typing', callback);
+      socket.on("user_typing", callback);
+      return () => socket.off("user_typing", callback);
     }
   };
 
@@ -184,8 +247,10 @@ export const SocketProvider = ({ children }) => {
     leaveRoom,
     sendMessage,
     deleteMessage,
+    recallMessage,
     onReceiveMessage,
     onMessageDeleted,
+    onMessageRecalled,
     onUserTyping,
   };
 

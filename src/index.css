@@ -49,9 +49,71 @@ html, body {
 
 img, picture, video, canvas {
     display: block;
-    max-width: 100%;
 }
 
-button, input, textarea, select {
-    font: inherit;
+/* ===== Recall & Reply Message Styles ===== */
+
+/* Recalled message style */
+.recalled-message {
+    background: var(--hover-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+}
+
+/* Reply preview in message bubble */
+.reply-preview {
+    background: rgba(0, 0, 0, 0.05);
+    border-left: 3px solid var(--primary-color);
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+    max-width: 300px;
+}
+
+.reply-preview:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Message actions (reply, recall buttons) */
+.message-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.group:hover .message-actions {
+    opacity: 1;
+}
+
+/* Highlight animation when scrolling to a message */
+.highlight {
+    animation: highlight 2s ease;
+}
+
+@keyframes highlight {
+    0%, 100% {
+        background: transparent;
+    }
+    50% {
+        background: rgba(255, 235, 59, 0.3);
+    }
+}
+
+/* Dark theme adjustments */
+.dark-theme .reply-preview {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dark-theme .reply-preview:hover {
+    background: rgba(255, 255, 255, 0.1);
 }

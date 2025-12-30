@@ -75,11 +75,23 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Gọi API refresh token - cookies tự động được gửi
+        // Lấy refreshToken từ localStorage
+        const refreshToken = localStorage.getItem('refreshToken') || localStorage.getItem('adminRefreshToken');
+
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        // Gọi API refresh token - gửi refreshToken trong body
         const { data } = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
-          {},
-          { withCredentials: true }
+          { refreshToken }, // Gửi refreshToken trong body
+          {
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
         );
 
         const newAccessToken = data.data?.accessToken || data.accessToken;
