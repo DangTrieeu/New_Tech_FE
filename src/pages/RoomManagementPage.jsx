@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import * as adminService from '../services/adminService';
 import { MoreVertical, Eye, Trash2 } from 'lucide-react';
 import Button from '@/components/atoms/Button/Button';
+import RoomDetailModal from '@/components/organisms/RoomDetailModal/RoomDetailModal';
 
 const RoomManagementPage = () => {
   const [rooms, setRooms] = useState([]);
@@ -151,56 +152,11 @@ const RoomManagementPage = () => {
       </div>
 
       {/* Room Detail Modal */}
-      {selectedRoom && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Chi tiết Room</h2>
-              <Button
-                useTailwind
-                onClick={() => setSelectedRoom(null)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Thông tin Room</h3>
-                <p><strong>Tên:</strong> {selectedRoom.room.name}</p>
-                <p><strong>Type:</strong> {selectedRoom.room.type}</p>
-                <p><strong>Created by:</strong> {selectedRoom.room.createdByName}</p>
-                <p><strong>Tổng Members:</strong> {selectedRoom.room.memberCount}</p>
-                <p><strong>Tổng Messages:</strong> {selectedRoom.room.totalMessages}</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Danh sách Members</h3>
-                <div className="space-y-2">
-                  {selectedRoom.members.map((member) => (
-                    <div key={member.id} className="p-3 bg-gray-50 rounded flex items-center gap-3">
-                      <img
-                        src={member.avatar_url || '/default-avatar.png'}
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full"
-                      />
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-gray-600">{member.email}</p>
-                      </div>
-                      <span className={`ml-auto px-2 py-1 rounded text-xs font-medium ${member.status === 'ONLINE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                        {member.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <RoomDetailModal
+        isOpen={!!selectedRoom}
+        onClose={() => setSelectedRoom(null)}
+        roomData={selectedRoom}
+      />
     </div>
   );
 };

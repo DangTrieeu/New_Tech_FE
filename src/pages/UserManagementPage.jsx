@@ -7,6 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import TableControls from '@/components/organisms/TableControls/TableControls';
 import SortableTableHeader from '@/components/molecules/SortableTableHeader/SortableTableHeader';
 import Pagination from '@/components/molecules/Pagination/Pagination';
+import UserDetailModal from '@/components/organisms/UserDetailModal/UserDetailModal';
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
@@ -274,46 +275,11 @@ const UserManagementPage = () => {
       </div>
 
       {/* User Detail Modal */}
-      {selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Chi tiết User</h2>
-              <Button
-                useTailwind
-                onClick={() => setSelectedUser(null)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Thông tin cơ bản</h3>
-                <p><strong>Tên:</strong> {selectedUser.user.name}</p>
-                <p><strong>Email:</strong> {selectedUser.user.email}</p>
-                <p><strong>Role:</strong> {selectedUser.user.role}</p>
-                <p><strong>Status:</strong> {selectedUser.user.status}</p>
-                <p><strong>Tổng Rooms:</strong> {selectedUser.user.totalRoomsJoined}</p>
-                <p><strong>Tổng Messages:</strong> {selectedUser.user.totalMessagesSent}</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Rooms đã tham gia</h3>
-                <div className="space-y-2">
-                  {selectedUser.rooms.map((room) => (
-                    <div key={room.id} className="p-3 bg-gray-50 rounded">
-                      <p className="font-medium">{room.name}</p>
-                      <p className="text-sm text-gray-600">Type: {room.type}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <UserDetailModal
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        userData={selectedUser}
+      />
     </div>
   );
 };
